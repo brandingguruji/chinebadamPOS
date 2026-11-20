@@ -1,0 +1,18 @@
+{
+  "name": "chinebadam",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev --workspace=@chinebadam/api\" \"npm run dev --workspace=@chinebadam/web\"",
+    "dev:api": "npm run dev --workspace=@chinebadam/api",
+    "dev:web": "npm run dev --workspace=@chinebadam/web",
+    "build": "npm run build --workspace=@chinebadam/api && npm run build --workspace=@chinebadam/web"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
