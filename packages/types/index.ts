@@ -16,7 +16,7 @@ export interface Table {
   createdAt: string;
 }
 
-export type DishCategory = 'Special' | 'Soups' | 'Desserts' | 'Chickens';
+export type DishCategory = string;
 
 export interface Dish {
   id: string;
