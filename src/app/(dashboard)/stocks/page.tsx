@@ -165,7 +165,7 @@ export default function StocksPage() {
   }
 
   return (
-    <div className="p-6 max-w-6xl space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Stock &amp; Low-Stock Alerts</h1>
@@ -237,7 +237,7 @@ export default function StocksPage() {
       </div>
 
       {/* Stock Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100 text-left">

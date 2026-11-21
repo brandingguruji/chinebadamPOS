@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { CategoryModel, DishModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -18,7 +19,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await ensureSeeded();
+    await connectDB();
     const body = await request.json();
     const name = String(body.name ?? '').trim();
 
@@ -57,7 +58,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
+  await connectDB();
   const deleted = await CategoryModel.findByIdAndDelete(params.id);
   if (!deleted) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
   return NextResponse.json({ message: 'Category deleted' });

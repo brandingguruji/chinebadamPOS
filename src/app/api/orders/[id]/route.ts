@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { OrderModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -16,7 +17,7 @@ async function requireAuth(request: NextRequest) {
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  await ensureSeeded();
+  await connectDB();
   const doc = await OrderModel.findById(params.id);
   if (!doc) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   return NextResponse.json(serializeDoc(doc));
@@ -26,7 +27,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
-    await ensureSeeded();
+    await connectDB();
     const body = await request.json();
     const updated = await OrderModel.findByIdAndUpdate(params.id, body, { new: true });
     if (!updated) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -39,7 +40,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  await ensureSeeded();
+  await connectDB();
   const deleted = await OrderModel.findByIdAndDelete(params.id);
   if (!deleted) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   return NextResponse.json({ message: 'Order deleted' });

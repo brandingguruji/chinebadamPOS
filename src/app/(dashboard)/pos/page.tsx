@@ -20,6 +20,8 @@ import {
   ShoppingBag,
   Utensils,
   Calendar,
+  X,
+  ShoppingCart,
 } from 'lucide-react';
 
 type CartItem = { dish: Dish; quantity: number };
@@ -48,6 +50,7 @@ export default function QuickPOSPage() {
   const [payMethod, setPayMethod] = useState<PayMethod>('Cash');
   const [cashReceived, setCashReceived] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   const token = getToken() ?? '';
 
@@ -136,6 +139,7 @@ export default function QuickPOSPage() {
       setCart([]);
       setCashReceived('');
       setCustomerName('');
+      setMobileCartOpen(false);
       await loadData();
       toast.success(
         `Order ${created.orderNumber} (${orderMode}) — ₹${created.total.toFixed(2)} ${
@@ -159,9 +163,9 @@ export default function QuickPOSPage() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden bg-[#F7F9FA]">
+    <div className="flex flex-col lg:flex-row h-full overflow-hidden bg-[#F7F9FA] relative">
       {/* ── Left: Fast Tap Menu Grid ── */}
-      <div className="flex-1 flex flex-col overflow-hidden p-5 gap-4">
+      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-5 gap-3 sm:gap-4 pb-20 lg:pb-5">
         {/* Top Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
@@ -264,7 +268,45 @@ export default function QuickPOSPage() {
       </div>
 
       {/* ── Right: Express Checkout Panel ── */}
-      <aside className="w-96 flex-shrink-0 bg-white border-l border-slate-200/80 flex flex-col overflow-hidden">
+      {/* Mobile Floating Cart Bar */}
+      <div className="lg:hidden fixed bottom-16 inset-x-3 z-20">
+        <button
+          type="button"
+          onClick={() => setMobileCartOpen(true)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-[#0D9488] text-white shadow-lg active:scale-[0.99] transition"
+        >
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <ShoppingCart size={16} />
+            <span>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="text-sm font-extrabold">View Bill · ₹{total.toFixed(0)}</div>
+        </button>
+      </div>
+
+      {/* Checkout Panel: Drawer on mobile, fixed right sidebar on lg+ */}
+      {mobileCartOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
+          onClick={() => setMobileCartOpen(false)}
+        />
+      )}
+      <aside
+        className={clsx(
+          'bg-white border-l border-slate-200/80 flex flex-col overflow-hidden transition-transform duration-200',
+          'fixed inset-x-0 bottom-0 top-10 z-50 rounded-t-3xl shadow-2xl lg:static lg:inset-auto lg:rounded-none lg:shadow-none lg:w-96 lg:flex-shrink-0',
+          mobileCartOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'
+        )}
+      >
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <span className="text-sm font-bold text-slate-800">Current Bill ({totalItems})</span>
+          <button
+            type="button"
+            onClick={() => setMobileCartOpen(false)}
+            className="p-1.5 rounded-lg bg-slate-100 text-slate-600"
+          >
+            <X size={16} />
+          </button>
+        </div>
         {/* Order Mode Toggle */}
         <div className="p-4 border-b border-slate-100 space-y-3">
           <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">

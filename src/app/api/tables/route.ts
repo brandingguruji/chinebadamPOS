@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { TableModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -19,8 +20,8 @@ export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
-  const docs = await TableModel.find().sort({ number: 1 });
+  await connectDB();
+  const docs = await TableModel.find().sort({ number: 1 }).lean();
   return NextResponse.json(docs.map(serializeDoc));
 }
 
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await ensureSeeded();
+    await connectDB();
     const body = await request.json();
     const number = Number(body.number);
     const capacity = Number(body.capacity);

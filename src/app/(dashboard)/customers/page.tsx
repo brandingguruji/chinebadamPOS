@@ -18,7 +18,7 @@ function formatDate(dateStr: string) {
 
 export default function CustomersPage() {
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-800">Customers</h1>
         <p className="text-sm text-slate-500 mt-1">{MOCK_CUSTOMERS.length} registered customers</p>
@@ -45,7 +45,7 @@ export default function CustomersPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">

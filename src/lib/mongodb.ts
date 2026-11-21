@@ -21,6 +21,9 @@ export async function connectDB(): Promise<typeof mongoose> {
       .connect(MONGODB_URI, {
         dbName: 'chinebadam_pos',
         bufferCommands: false,
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 20000,
       })
       .then((m) => m);
   }

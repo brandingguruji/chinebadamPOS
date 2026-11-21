@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
 import { OrderModel, TableModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
+  await connectDB();
   const { searchParams } = new URL(request.url);
   const dateParam = searchParams.get('date');
   const orderQuery = buildDateRangeQuery(dateParam);

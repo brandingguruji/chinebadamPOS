@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { ExpenseModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
+  await connectDB();
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'all';
   const value = searchParams.get('value') || '';
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
     query = { $or: [{ date: { $gte: start, $lt: end } }, { createdAt: { $gte: start, $lt: end } }] };
   }
 
-  const docs = await ExpenseModel.find(query).sort({ date: -1, createdAt: -1 });
+  const docs = await ExpenseModel.find(query).sort({ date: -1, createdAt: -1 }).lean();
   return NextResponse.json(docs.map(serializeDoc));
 }
 
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await ensureSeeded();
+    await connectDB();
     const { amount, description, category, date } = await request.json();
 
     if (amount === undefined || Number(amount) <= 0 || !description?.trim()) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { StockModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -17,8 +18,8 @@ export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
-  const docs = await StockModel.find().sort({ quantity: 1, name: 1 });
+  await connectDB();
+  const docs = await StockModel.find().sort({ quantity: 1, name: 1 }).lean();
   return NextResponse.json(docs.map(serializeDoc));
 }
 
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await ensureSeeded();
+    await connectDB();
     const body = await request.json();
     const name = String(body.name ?? '').trim();
     const category = String(body.category ?? 'Grocery').trim() || 'Grocery';

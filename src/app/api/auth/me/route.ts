@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken } from '@/lib/jwt';
-import { ensureSeeded } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
 import { UserModel } from '@/lib/models';
 
 export async function GET(request: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payload = await verifyToken(authHeader.slice(7));
-    await ensureSeeded();
+    await connectDB();
 
     const user = await UserModel.findOne({ username: payload.username });
     if (!user) {

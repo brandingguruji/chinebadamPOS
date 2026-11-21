@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ensureSeeded, serializeDoc } from '@/lib/seed';
+import { connectDB } from '@/lib/mongodb';
+import { serializeDoc } from '@/lib/seed';
 import { OrderModel, TableModel, DishModel } from '@/lib/models';
 import { verifyToken } from '@/lib/jwt';
 
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
   const user = await requireAuth(request);
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  await ensureSeeded();
+  await connectDB();
   const { searchParams } = new URL(request.url);
   const statusParam = searchParams.get('status');
   const dateParam = searchParams.get('date');
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
   }
 
   const query = conditions.length > 0 ? { $and: conditions } : {};
-  const docs = await OrderModel.find(query).sort({ createdAt: -1 });
+  const docs = await OrderModel.find(query).sort({ createdAt: -1 }).lean();
   return NextResponse.json(docs.map(serializeDoc));
 }
 
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    await ensureSeeded();
+    await connectDB();
     const { tableId, items, paymentMethod, status, customerName, orderType } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {

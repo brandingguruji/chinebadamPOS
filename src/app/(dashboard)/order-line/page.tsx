@@ -25,6 +25,8 @@ import {
   Drumstick,
   ShoppingBag,
   Calendar,
+  X,
+  ShoppingCart,
 } from 'lucide-react';
 
 type CartItem = { dish: Dish; quantity: number };
@@ -102,6 +104,7 @@ export default function OrderLinePage() {
   const [customerName, setCustomerName] = useState<string>('');
   const [selectedTableId, setSelectedTableId] = useState<string>('');
   const [placing, setPlacing] = useState(false);
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
 
   const orderScrollRef = useRef<HTMLDivElement>(null);
   const catScrollRef = useRef<HTMLDivElement>(null);
@@ -219,6 +222,7 @@ export default function OrderLinePage() {
       });
       setCart([]);
       setCustomerName('');
+      setMobileCartOpen(false);
       await loadData();
       toast.success(
         orderType === 'Take Away'
@@ -258,9 +262,9 @@ export default function OrderLinePage() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden relative">
+    <div className="flex flex-col lg:flex-row h-full overflow-hidden relative">
       {/* ── Center / Left Panel ── */}
-      <div className="flex-1 flex flex-col overflow-y-auto px-6 py-5 gap-5">
+      <div className="flex-1 flex flex-col overflow-y-auto px-3 sm:px-6 py-4 sm:py-5 gap-4 sm:gap-5 pb-24 lg:pb-6">
         {/* Order Line Heading + Date Filter + Status Pills */}
         <div>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -497,7 +501,44 @@ export default function OrderLinePage() {
       </div>
 
       {/* ── Right Order Summary Panel ── */}
-      <aside className="w-80 flex-shrink-0 bg-white border-l border-slate-100 flex flex-col overflow-hidden">
+      {/* Mobile Floating Order Summary Bar */}
+      <div className="lg:hidden fixed bottom-16 inset-x-3 z-20">
+        <button
+          type="button"
+          onClick={() => setMobileCartOpen(true)}
+          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-[#0D9488] text-white shadow-lg active:scale-[0.99] transition"
+        >
+          <div className="flex items-center gap-2 text-xs font-bold">
+            <ShoppingCart size={16} />
+            <span>{totalItemCount} item{totalItemCount !== 1 ? 's' : ''}</span>
+          </div>
+          <div className="text-sm font-extrabold">Order Summary · ₹{total.toFixed(0)}</div>
+        </button>
+      </div>
+
+      {mobileCartOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
+          onClick={() => setMobileCartOpen(false)}
+        />
+      )}
+      <aside
+        className={clsx(
+          'bg-white border-l border-slate-100 flex flex-col overflow-hidden transition-transform duration-200',
+          'fixed inset-x-0 bottom-0 top-10 z-50 rounded-t-3xl shadow-2xl lg:static lg:inset-auto lg:rounded-none lg:shadow-none lg:w-80 lg:flex-shrink-0',
+          mobileCartOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'
+        )}
+      >
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <span className="text-sm font-bold text-slate-800">Order Summary ({totalItemCount})</span>
+          <button
+            type="button"
+            onClick={() => setMobileCartOpen(false)}
+            className="p-1.5 rounded-lg bg-slate-100 text-slate-600"
+          >
+            <X size={16} />
+          </button>
+        </div>
         {/* Order Type & Table Info */}
         <div className="px-5 py-4 border-b border-slate-100">
           {/* 2-Type Switch: Table vs Take Away */}
