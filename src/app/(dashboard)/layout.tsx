@@ -23,6 +23,7 @@ import {
   Package,
   Menu,
   X,
+  UserCircle,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_ITEMS = [
+  { label: 'Profile', href: '/profile', icon: UserCircle },
   { label: 'Settings', href: '/settings', icon: Settings },
   { label: 'Help Center', href: '/help', icon: HelpCircle },
 ];
@@ -254,7 +256,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </span>
               )}
             </Link>
-            <div className="flex items-center gap-2">
+            <Link
+              href="/profile"
+              title="Profile Settings"
+              className="flex items-center gap-2 hover:bg-slate-50 px-2 py-1 rounded-xl transition"
+            >
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
                 {username.charAt(0).toUpperCase()}
               </div>
@@ -262,7 +268,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <div className="text-[13px] font-semibold text-slate-800 capitalize">{username}</div>
                 <div className="text-[11px] text-slate-400 capitalize">{role}</div>
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
+import { Pagination } from '@/components/Pagination';
 import {
   getDishes,
   createDish,
@@ -23,6 +24,8 @@ export default function ManageDishesPage() {
   const [loading, setLoading] = useState(true);
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   // Dish modal state
   const [showModal, setShowModal] = useState(false);
@@ -74,6 +77,8 @@ export default function ManageDishesPage() {
     const matchSearch = (d.name || '').toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
+
+  const paginatedDishes = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   // ─── Dish CRUD ─────────────────────────────────────────────────────────────
 
@@ -284,7 +289,7 @@ export default function ManageDishesPage() {
             type="text"
             placeholder="Search dishes..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
           />
         </div>
@@ -292,7 +297,7 @@ export default function ManageDishesPage() {
           {filterTabs.map((cat) => (
             <button
               key={cat}
-              onClick={() => setCategoryFilter(cat)}
+              onClick={() => { setCategoryFilter(cat); setPage(1); }}
               className={clsx(
                 'px-3.5 py-2 rounded-xl text-xs font-semibold transition-all',
                 categoryFilter === cat
@@ -308,7 +313,7 @@ export default function ManageDishesPage() {
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {filtered.map((dish) => (
+        {paginatedDishes.map((dish) => (
           <div
             key={dish.id}
             className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all flex flex-col"
@@ -359,6 +364,15 @@ export default function ManageDishesPage() {
             </button>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+        <Pagination
+          currentPage={page}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Add / Edit Dish Modal */}

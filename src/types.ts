@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   username: string;
+  email?: string;
   passwordHash?: string;
   role: 'admin' | 'staff';
   createdAt: string;
@@ -98,5 +99,16 @@ export interface StockItem {
   minThreshold: number;
   unit: string;
   updatedAt?: string;
+  createdAt?: string;
+}
+
+export interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  totalOrders: number;
+  totalSpent: number;
+  lastVisit?: string;
   createdAt?: string;
 }

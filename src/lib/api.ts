@@ -27,10 +27,24 @@ export async function login(username: string, password: string) {
 }
 
 export async function getMe(token: string) {
-  return apiFetch<{ id: string; username: string; role: string }>(
+  return apiFetch<{ id: string; username: string; email?: string; role: string }>(
     '/api/auth/me',
     { headers: authHeaders(token) }
   );
+}
+
+export async function updateProfile(
+  token: string,
+  data: { username?: string; email?: string; currentPassword?: string; newPassword?: string }
+) {
+  return apiFetch<{
+    token: string;
+    user: { id: string; username: string; email?: string; role: string };
+  }>('/api/auth/me', {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: authHeaders(token),
+  });
 }
 
 // Tables CRUD
@@ -265,6 +279,43 @@ export async function updateStock(
 
 export async function deleteStock(token: string, id: string) {
   return apiFetch<{ message: string }>(`/api/stocks/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+}
+
+// Customers CRUD
+export async function getCustomers(token: string) {
+  return apiFetch<import('@/types').Customer[]>('/api/customers', {
+    headers: authHeaders(token),
+  });
+}
+
+export async function createCustomer(
+  token: string,
+  data: { name: string; phone: string; email?: string; totalOrders?: number; totalSpent?: number }
+) {
+  return apiFetch<import('@/types').Customer>('/api/customers', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: authHeaders(token),
+  });
+}
+
+export async function updateCustomer(
+  token: string,
+  id: string,
+  data: Partial<{ name: string; phone: string; email: string; totalOrders: number; totalSpent: number }>
+) {
+  return apiFetch<import('@/types').Customer>(`/api/customers/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: authHeaders(token),
+  });
+}
+
+export async function deleteCustomer(token: string, id: string) {
+  return apiFetch<{ message: string }>(`/api/customers/${id}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   });

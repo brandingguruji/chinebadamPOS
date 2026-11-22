@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
+import { Pagination } from '@/components/Pagination';
 import { getTables, createTable, updateTableStatus, deleteTable } from '@/lib/api';
 import type { Table, TableStatus } from '@/types';
 import clsx from 'clsx';
@@ -22,6 +23,8 @@ const CARD_BORDER: Record<TableStatus, string> = {
 
 export default function ManageTablesPage() {
   const [tables, setTables] = useState<Table[]>([]);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Table | null>(null);
@@ -127,6 +130,8 @@ export default function ManageTablesPage() {
     }
   }
 
+  const paginatedTables = tables.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -171,7 +176,7 @@ export default function ManageTablesPage() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {tables.map((table) => (
+        {paginatedTables.map((table) => (
           <div
             key={table.id}
             className={clsx(
@@ -224,6 +229,15 @@ export default function ManageTablesPage() {
             </select>
           </div>
         ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+        <Pagination
+          currentPage={page}
+          totalItems={tables.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Add / Edit Table Modal */}

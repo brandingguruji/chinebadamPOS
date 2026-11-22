@@ -8,13 +8,18 @@ export async function POST(request: NextRequest) {
   try {
     await ensureSeeded();
     const body = await request.json();
-    const { username, password } = body as { username: string; password: string };
+    const identifier = String(body.username ?? body.email ?? '').trim();
+    const password = String(body.password ?? '');
 
-    if (!username || !password) {
-      return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+    if (!identifier || !password) {
+      return NextResponse.json({ error: 'Email/Username and password are required' }, { status: 400 });
     }
 
-    const user = await UserModel.findOne({ username });
+    const lower = identifier.toLowerCase();
+    const user = await UserModel.findOne({
+      $or: [{ username: identifier }, { email: lower }, { email: identifier }],
+    });
+
     if (!user) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
@@ -29,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       token,
-      user: { id: userId, username: user.username, role: user.role },
+      user: { id: userId, username: user.username, email: user.email || '', role: user.role },
     });
   } catch (err) {
     console.error('Login error:', err);

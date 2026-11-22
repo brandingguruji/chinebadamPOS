@@ -4,6 +4,7 @@ import { useEffect, useState, FormEvent, useCallback } from 'react';
 import { getToken } from '@/lib/auth';
 import { getStocks, createStock, updateStock, deleteStock } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
+import { Pagination } from '@/components/Pagination';
 import type { StockItem } from '@/types';
 import clsx from 'clsx';
 import { Plus, Minus, Edit3, Trash2, X, AlertTriangle, Package, PackageX } from 'lucide-react';
@@ -15,6 +16,8 @@ export default function StocksPage() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'low' | 'out' | 'ok'>('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<StockItem | null>(null);
@@ -53,6 +56,8 @@ export default function StocksPage() {
     if (filter === 'ok') return s.quantity > s.minThreshold;
     return true;
   });
+
+  const paginatedStocks = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   function openAdd() {
     setEditing(null);
@@ -223,7 +228,7 @@ export default function StocksPage() {
         ] as const).map((f) => (
           <button
             key={f.id}
-            onClick={() => setFilter(f.id)}
+            onClick={() => { setFilter(f.id); setPage(1); }}
             className={clsx(
               'px-3.5 py-2 rounded-xl text-xs font-semibold border transition',
               filter === f.id
@@ -257,7 +262,7 @@ export default function StocksPage() {
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => {
+              paginatedStocks.map((item) => {
                 const isOut = item.quantity <= 0;
                 const isLow = !isOut && item.quantity <= item.minThreshold;
                 return (
@@ -324,6 +329,12 @@ export default function StocksPage() {
             )}
           </tbody>
         </table>
+        <Pagination
+          currentPage={page}
+          totalItems={filtered.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Add / Edit Stock Modal */}

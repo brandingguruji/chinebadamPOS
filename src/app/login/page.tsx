@@ -48,14 +48,14 @@ export default function LoginPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5" htmlFor="username">
-              Username
+              Email or Username
             </label>
             <input
               id="username"
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
+              placeholder="Enter email or username"
               required
               className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
             />

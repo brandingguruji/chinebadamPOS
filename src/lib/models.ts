@@ -3,6 +3,7 @@ import mongoose, { Schema, Model } from 'mongoose';
 const UserSchema = new Schema(
   {
     username: { type: String, required: true, unique: true },
+    email: { type: String, default: '' },
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ['admin', 'staff'], default: 'admin' },
   },
@@ -101,3 +102,18 @@ const StockSchema = new Schema(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const StockModel: Model<any> = mongoose.models.Stock || mongoose.model('Stock', StockSchema);
+
+const CustomerSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String, default: '' },
+    totalOrders: { type: Number, default: 0 },
+    totalSpent: { type: Number, default: 0 },
+    lastVisit: { type: Date, default: Date.now },
+  },
+  { timestamps: true, strict: false, collection: 'customers' }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const CustomerModel: Model<any> = mongoose.models.Customer || mongoose.model('Customer', CustomerSchema);

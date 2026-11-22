@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent, useCallback } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
+import { Pagination } from '@/components/Pagination';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from '@/lib/api';
 import type { Expense } from '@/types';
 import { Plus, Trash2, Edit3, Wallet, X, Calendar } from 'lucide-react';
@@ -27,6 +28,8 @@ export default function ExpensesPage() {
   const [monthVal, setMonthVal] = useState(currentMonthStr());
   const [yearVal, setYearVal] = useState(String(new Date().getFullYear()));
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -135,6 +138,7 @@ export default function ExpensesPage() {
   }
 
   const totalExpenses = expenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const paginatedExpenses = expenses.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   if (loading) {
     return (
@@ -249,7 +253,7 @@ export default function ExpensesPage() {
                 </td>
               </tr>
             ) : (
-              expenses.map((ex) => (
+              paginatedExpenses.map((ex) => (
                 <tr key={ex.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="px-5 py-3.5 font-medium text-slate-800">{ex.description}</td>
                   <td className="px-5 py-3.5">
@@ -290,6 +294,12 @@ export default function ExpensesPage() {
             )}
           </tbody>
         </table>
+        <Pagination
+          currentPage={page}
+          totalItems={expenses.length}
+          pageSize={PAGE_SIZE}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Add / Edit Expense Modal */}

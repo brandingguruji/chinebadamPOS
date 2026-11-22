@@ -3,9 +3,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth';
-import { getMonthlyReport } from '@/lib/api';
+import { getMonthlyReport, deleteOrder, deleteExpense } from '@/lib/api';
+import { useToast } from '@/components/ToastProvider';
+import { Pagination } from '@/components/Pagination';
 import type { MonthlyReport } from '@/types';
-import { TrendingUp, TrendingDown, IndianRupee, Wallet, Plus, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, IndianRupee, Wallet, Plus, Calendar, Trash2 } from 'lucide-react';
 import clsx from 'clsx';
 
 type PeriodType = 'daily' | 'monthly' | 'yearly';
@@ -32,6 +34,10 @@ export default function ReportsPage() {
 
   const [report, setReport] = useState<MonthlyReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [orderPage, setOrderPage] = useState(1);
+  const [expPage, setExpPage] = useState(1);
+  const PAGE_SIZE = 8;
+  const toast = useToast();
 
   const token = getToken() ?? '';
   const activeValue = period === 'daily' ? dayValue : period === 'yearly' ? yearValue : monthValue;
@@ -53,6 +59,30 @@ export default function ReportsPage() {
   }, [loadReport]);
 
   const isProfit = (report?.netProfit ?? 0) >= 0;
+  const pagedOrders = (report?.orders ?? []).slice((orderPage - 1) * PAGE_SIZE, orderPage * PAGE_SIZE);
+  const pagedExpenses = (report?.expenses ?? []).slice((expPage - 1) * PAGE_SIZE, expPage * PAGE_SIZE);
+
+  async function handleDeleteOrder(id: string, num: string) {
+    if (!confirm(`Delete order ${num}?`)) return;
+    try {
+      await deleteOrder(token, id);
+      toast.success(`Deleted order ${num}`);
+      loadReport();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete order');
+    }
+  }
+
+  async function handleDeleteExpense(id: string, desc: string) {
+    if (!confirm(`Delete expense "${desc}"?`)) return;
+    try {
+      await deleteExpense(token, id);
+      toast.success(`Deleted expense "${desc}"`);
+      loadReport();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete expense');
+    }
+  }
   const years = Array.from({ length: 6 }, (_, i) => String(new Date().getFullYear() - i));
 
   const periodTitle =
@@ -219,8 +249,8 @@ export default function ReportsPage() {
                     No orders recorded for this period.
                   </div>
                 ) : (
-                  report?.orders.map((o) => (
-                    <div key={o.id} className="px-5 py-3 flex items-center justify-between text-xs">
+                  pagedOrders.map((o) => (
+                    <div key={o.id} className="px-5 py-3 flex items-center justify-between gap-2 text-xs">
                       <div>
                         <div className="font-semibold text-slate-800">
                           {o.orderNumber} · {o.tableNumber ? `Table #${o.tableNumber}` : 'Take Away'}
@@ -229,11 +259,27 @@ export default function ReportsPage() {
                           {new Date(o.createdAt).toLocaleDateString('en-IN')} · {o.status}
                         </div>
                       </div>
-                      <div className="font-bold text-slate-900">₹{Number(o.total || 0).toFixed(2)}</div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-slate-900">₹{Number(o.total || 0).toFixed(2)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOrder(o.id, o.orderNumber)}
+                          className="text-slate-400 hover:text-rose-600 transition"
+                          title="Delete order"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
               </div>
+              <Pagination
+                currentPage={orderPage}
+                totalItems={report?.orders?.length ?? 0}
+                pageSize={PAGE_SIZE}
+                onPageChange={setOrderPage}
+              />
             </div>
 
             {/* Expenses Tally */}
@@ -252,19 +298,35 @@ export default function ReportsPage() {
                     No expenses recorded for this period.
                   </div>
                 ) : (
-                  report?.expenses.map((ex) => (
-                    <div key={ex.id} className="px-5 py-3 flex items-center justify-between text-xs">
+                  pagedExpenses.map((ex) => (
+                    <div key={ex.id} className="px-5 py-3 flex items-center justify-between gap-2 text-xs">
                       <div>
                         <div className="font-semibold text-slate-800">{ex.description}</div>
                         <div className="text-slate-400">
                           {new Date(ex.date).toLocaleDateString('en-IN')} · {ex.category}
                         </div>
                       </div>
-                      <div className="font-bold text-rose-600">-₹{Number(ex.amount || 0).toFixed(2)}</div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-rose-600">-₹{Number(ex.amount || 0).toFixed(2)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteExpense(ex.id, ex.description)}
+                          className="text-slate-400 hover:text-rose-600 transition"
+                          title="Delete expense"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
               </div>
+              <Pagination
+                currentPage={expPage}
+                totalItems={report?.expenses?.length ?? 0}
+                pageSize={PAGE_SIZE}
+                onPageChange={setExpPage}
+              />
             </div>
           </div>
         </>

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
-import { getOrders, getDishes, getTables, createOrder, updateOrder } from '@/lib/api';
+import { getOrders, getDishes, getTables, createOrder, updateOrder, deleteOrder } from '@/lib/api';
 import type { Order, Dish, Table, OrderItem, OrderStatus } from '@/types';
 import clsx from 'clsx';
 import {
@@ -249,6 +249,18 @@ export default function OrderLinePage() {
     }
   }
 
+  async function handleDeleteOrder(order: Order) {
+    if (!confirm(`Delete order ${order.orderNumber}?`)) return;
+    try {
+      await deleteOrder(token, order.id);
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+      if (selectedOrder?.id === order.id) setSelectedOrder(null);
+      toast.success(`Deleted order ${order.orderNumber}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete order');
+    }
+  }
+
   function handlePrint() {
     window.print();
   }
@@ -359,7 +371,20 @@ export default function OrderLinePage() {
                 >
                   <div className="flex items-center justify-between text-xs font-semibold text-slate-700 mb-2">
                     <span>Order {order.orderNumber}</span>
-                    <span>{isTakeAwayOrder(order) ? 'Take Away' : `Table ${String(order.tableNumber).padStart(2, '0')}`}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{isTakeAwayOrder(order) ? 'Take Away' : `Table ${String(order.tableNumber).padStart(2, '0')}`}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOrder(order);
+                        }}
+                        className="p-0.5 rounded text-slate-500 hover:text-rose-600 transition"
+                        title="Delete order"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </div>
                   <div className="text-sm font-bold text-slate-900 mb-3">Item: {totalQty}X</div>
                   <div className="flex items-center justify-between gap-2">
