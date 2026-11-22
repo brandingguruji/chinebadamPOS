@@ -119,3 +119,27 @@ const CustomerSchema = new Schema(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const CustomerModel: Model<any> = mongoose.models.Customer || mongoose.model('Customer', CustomerSchema);
+
+const BulkOrderSchema = new Schema(
+  {
+    orderNumber: { type: String },
+    customerName: { type: String, required: true },
+    phone: { type: String, required: true },
+    eventType: { type: String, default: 'Birthday' },
+    menuDetails: { type: String, required: true },
+    peopleCount: { type: Number, required: true, default: 10 },
+    totalPrice: { type: Number, required: true },
+    advancePaid: { type: Number, default: 0 },
+    balanceDue: { type: Number, default: 0 },
+    paymentMethod: { type: String, default: 'Cash' },
+    orderDate: { type: String, required: true },
+    deliveryDate: { type: String, required: true },
+    deliveryTime: { type: String, default: '' },
+    status: { type: String, enum: ['Booked', 'Preparing', 'Completed', 'Cancelled'], default: 'Booked' },
+    notes: { type: String, default: '' },
+  },
+  { timestamps: true, strict: false, collection: 'bulkorders' }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const BulkOrderModel: Model<any> = mongoose.models.BulkOrder || mongoose.model('BulkOrder', BulkOrderSchema);

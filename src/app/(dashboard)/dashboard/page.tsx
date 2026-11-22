@@ -3,10 +3,11 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { getToken } from '@/lib/auth';
-import { getDashboardStats, getStocks, updateStock } from '@/lib/api';
+import { getDashboardStats, getStocks, updateStock, getBulkOrders } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
 import { loadStoreSettings, type StoreType } from '@/lib/settings';
-import type { DashboardStats, StockItem } from '@/types';
+import { ThermalReceiptModal, type ReceiptData } from '@/components/ThermalReceiptModal';
+import type { DashboardStats, StockItem, BulkOrder } from '@/types';
 import {
   ShoppingBag,
   IndianRupee,
@@ -16,6 +17,10 @@ import {
   AlertTriangle,
   PackageX,
   Plus,
+  PartyPopper,
+  Printer,
+  Users,
+  Clock,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -34,6 +39,13 @@ function getYesterdayStr() {
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+}
+
+function formatDate(d?: string) {
+  if (!d) return '—';
+  const parsed = new Date(d + 'T00:00:00');
+  if (Number.isNaN(parsed.getTime())) return d;
+  return parsed.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function StatCard({
@@ -67,9 +79,11 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [lowStocks, setLowStocks] = useState<StockItem[]>([]);
+  const [bulkOrders, setBulkOrders] = useState<BulkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [restockingId, setRestockingId] = useState<string | null>(null);
   const [storeType, setStoreType] = useState<StoreType>('big');
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const alertedRef = useRef(false);
 
   const toast = useToast();
@@ -85,9 +99,14 @@ export default function DashboardPage() {
     const token = getToken();
     if (!token) return;
     setLoading(true);
-    Promise.all([getDashboardStats(token, selectedDate), getStocks(token).catch(() => [])])
-      .then(([s, st]) => {
+    Promise.all([
+      getDashboardStats(token, selectedDate),
+      getStocks(token).catch(() => []),
+      getBulkOrders(token).catch(() => []),
+    ])
+      .then(([s, st, bo]) => {
         setStats(s);
+        setBulkOrders(bo);
         const low = st.filter((item) => item.quantity <= item.minThreshold);
         setLowStocks(low);
         if (low.length > 0 && !alertedRef.current) {
@@ -121,6 +140,40 @@ export default function DashboardPage() {
     }
   }
 
+  function openBulkBill(o: BulkOrder) {
+    setReceiptData({
+      orderNumber: o.orderNumber,
+      date: new Date().toLocaleDateString('en-IN'),
+      orderType: `Bulk (${o.eventType})`,
+      customerName: `${o.customerName} (${o.phone})`,
+      paymentMethod: o.paymentMethod === 'Scan' ? 'UPI' : o.paymentMethod,
+      orderDate: formatDate(o.orderDate),
+      deliveryDate: `${formatDate(o.deliveryDate)}${o.deliveryTime ? ` ${o.deliveryTime}` : ''}`,
+      peopleCount: o.peopleCount,
+      items: [
+        {
+          name: `${o.menuDetails} (${o.peopleCount} pax)`,
+          quantity: 1,
+          unitPrice: Number(o.totalPrice || 0),
+        },
+      ],
+      subtotal: Number(o.totalPrice || 0),
+      taxRate: 0,
+      tax: 0,
+      total: Number(o.totalPrice || 0),
+      advancePaid: Number(o.advancePaid || 0),
+      balanceDue: Number(o.balanceDue || 0),
+    });
+  }
+
+  const activeBulkOrders = bulkOrders.filter((o) => o.status !== 'Cancelled');
+  const upcomingBulkOrders = bulkOrders.filter(
+    (o) => o.status === 'Booked' || o.status === 'Preparing'
+  );
+  const bulkTotalValue = activeBulkOrders.reduce((s, o) => s + Number(o.totalPrice || 0), 0);
+  const bulkAdvance = activeBulkOrders.reduce((s, o) => s + Number(o.advancePaid || 0), 0);
+  const bulkBalance = activeBulkOrders.reduce((s, o) => s + Number(o.balanceDue || 0), 0);
+
   const today = getTodayStr();
   const yesterday = getYesterdayStr();
   const dateLabel =
@@ -137,7 +190,7 @@ export default function DashboardPage() {
         });
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
@@ -267,6 +320,112 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Bulk / Party Orders Summary Section */}
+          <div className="mt-6 bg-white rounded-2xl p-5 sm:p-6 shadow-sm border border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center">
+                  <PartyPopper size={17} />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-800">
+                    Bulk / Party Orders Summary
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    {upcomingBulkOrders.length} upcoming · {activeBulkOrders.length} total active bookings
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/bulk-orders"
+                className="text-xs font-semibold text-[#0D9488] hover:underline"
+              >
+                Manage All Bulk Orders →
+              </Link>
+            </div>
+
+            {/* Bulk KPIs */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="rounded-xl bg-teal-50/70 border border-teal-100 px-3.5 py-2.5">
+                <div className="text-base sm:text-lg font-extrabold text-teal-800">
+                  ₹{bulkTotalValue.toFixed(0)}
+                </div>
+                <div className="text-[11px] text-teal-700 font-medium">Total Value</div>
+              </div>
+              <div className="rounded-xl bg-emerald-50/70 border border-emerald-100 px-3.5 py-2.5">
+                <div className="text-base sm:text-lg font-extrabold text-emerald-700">
+                  ₹{bulkAdvance.toFixed(0)}
+                </div>
+                <div className="text-[11px] text-emerald-700 font-medium">Advance Paid</div>
+              </div>
+              <div className="rounded-xl bg-rose-50/70 border border-rose-100 px-3.5 py-2.5">
+                <div className="text-base sm:text-lg font-extrabold text-rose-700">
+                  ₹{bulkBalance.toFixed(0)}
+                </div>
+                <div className="text-[11px] text-rose-700 font-medium">Balance Due</div>
+              </div>
+            </div>
+
+            {/* Upcoming Bulk Orders List with Direct Print Bill */}
+            {upcomingBulkOrders.length === 0 ? (
+              <div className="py-5 text-center text-xs text-slate-400 border border-dashed border-slate-200 rounded-xl">
+                No upcoming party/bulk orders right now.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {upcomingBulkOrders.slice(0, 5).map((o) => (
+                  <div
+                    key={o.id}
+                    className="p-3.5 rounded-xl border border-slate-200/80 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-bold text-slate-900">{o.orderNumber}</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-800">
+                          {o.eventType}
+                        </span>
+                        <span className="text-xs font-semibold text-slate-700 truncate">
+                          {o.customerName}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-600 mt-1 line-clamp-1">{o.menuDetails}</div>
+                      <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 mt-1">
+                        <span className="inline-flex items-center gap-1">
+                          <Users size={11} className="text-teal-600" />
+                          {o.peopleCount} pax
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+                          <Clock size={11} />
+                          Delivery: {formatDate(o.deliveryDate)}
+                          {o.deliveryTime ? ` · ${o.deliveryTime}` : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right">
+                        <div className="text-sm font-extrabold text-slate-900">
+                          ₹{Number(o.totalPrice || 0).toFixed(0)}
+                        </div>
+                        <div className="text-[10px] text-rose-600 font-semibold">
+                          Due: ₹{Number(o.balanceDue || 0).toFixed(0)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openBulkBill(o)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-teal-600 text-teal-700 hover:bg-teal-50 text-xs font-bold transition shadow-xs"
+                      >
+                        <Printer size={13} />
+                        Print Bill
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Dedicated Low Stock Items Panel on Dashboard */}
           {lowStocks.length > 0 && (
             <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm border border-amber-200">
@@ -345,6 +504,9 @@ export default function DashboardPage() {
           </div>
         </>
       )}
+
+      {/* Thermal Bill Print Modal for Bulk Orders */}
+      <ThermalReceiptModal receipt={receiptData} onClose={() => setReceiptData(null)} />
     </div>
   );
 }

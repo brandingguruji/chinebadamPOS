@@ -26,12 +26,14 @@ import {
   X,
   UserCircle,
   Tags,
+  PartyPopper,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { label: 'Quick POS', href: '/pos', icon: Zap },
   { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
   { label: 'Order Line', href: '/order-line', icon: ClipboardList },
+  { label: 'Bulk Orders', href: '/bulk-orders', icon: PartyPopper },
   { label: 'Manage Table', href: '/manage-tables', icon: Armchair },
   { label: 'Manage Dishes', href: '/manage-dishes', icon: UtensilsCrossed },
   { label: 'Categories', href: '/categories', icon: Tags },

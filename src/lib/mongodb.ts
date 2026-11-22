@@ -21,13 +21,19 @@ export async function connectDB(): Promise<typeof mongoose> {
       .connect(MONGODB_URI, {
         dbName: 'chinebadam_pos',
         bufferCommands: false,
+        family: 4,
         maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
+        serverSelectionTimeoutMS: 15000,
         socketTimeoutMS: 20000,
       })
       .then((m) => m);
   }
 
-  cached.conn = await cached.promise;
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    throw e;
+  }
   return cached.conn;
 }

@@ -55,6 +55,11 @@ const STATUS_CARD_STYLE: Record<OrderStatus, { card: string; badge: string; labe
     badge: 'bg-slate-600 text-white',
     label: 'Served',
   },
+  Hold: {
+    card: 'bg-amber-50 border-amber-200',
+    badge: 'bg-amber-600 text-white',
+    label: 'On Hold',
+  },
 };
 
 const FILTER_BADGE_COLORS: Record<StatusFilter, string> = {
@@ -402,6 +407,7 @@ export default function OrderLinePage() {
                       <option value="WaitList" className="bg-white text-slate-800">Wait List</option>
                       <option value="Ready" className="bg-white text-slate-800">Ready</option>
                       <option value="Served" className="bg-white text-slate-800">Served</option>
+                      <option value="Hold" className="bg-white text-slate-800">On Hold</option>
                     </select>
                   </div>
                 </div>

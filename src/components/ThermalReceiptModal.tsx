@@ -15,6 +15,11 @@ export interface ReceiptData {
   taxRate: number;
   tax: number;
   total: number;
+  orderDate?: string;
+  deliveryDate?: string;
+  peopleCount?: number;
+  advancePaid?: number;
+  balanceDue?: number;
 }
 
 interface ThermalReceiptModalProps {
@@ -89,6 +94,9 @@ export function ThermalReceiptModal({ receipt, onClose }: ThermalReceiptModalPro
               {receipt.customerName && receipt.customerName !== 'Walk-in' && (
                 <div>Cust: {receipt.customerName}</div>
               )}
+              {receipt.orderDate && <div>Order Date: {receipt.orderDate}</div>}
+              {receipt.deliveryDate && <div>Delivery: {receipt.deliveryDate}</div>}
+              {receipt.peopleCount ? <div>People: {receipt.peopleCount} pax</div> : null}
               <div>Pay: {receipt.paymentMethod}</div>
             </div>
 
@@ -131,6 +139,18 @@ export function ThermalReceiptModal({ receipt, onClose }: ThermalReceiptModalPro
                 <span>TOTAL</span>
                 <span>₹{receipt.total.toFixed(2)}</span>
               </div>
+              {receipt.advancePaid !== undefined && (
+                <>
+                  <div className="flex justify-between">
+                    <span>Advance Paid</span>
+                    <span>₹{receipt.advancePaid.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold">
+                    <span>Balance Due</span>
+                    <span>₹{(receipt.balanceDue ?? 0).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="border-t border-dashed border-black my-2" />

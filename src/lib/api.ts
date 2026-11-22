@@ -320,3 +320,40 @@ export async function deleteCustomer(token: string, id: string) {
     headers: authHeaders(token),
   });
 }
+
+// Bulk / Party Orders CRUD
+export async function getBulkOrders(token: string) {
+  return apiFetch<import('@/types').BulkOrder[]>('/api/bulk-orders', {
+    headers: authHeaders(token),
+  });
+}
+
+export async function createBulkOrder(
+  token: string,
+  data: Omit<import('@/types').BulkOrder, 'id' | 'orderNumber' | 'balanceDue' | 'createdAt' | 'updatedAt'>
+) {
+  return apiFetch<import('@/types').BulkOrder>('/api/bulk-orders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    headers: authHeaders(token),
+  });
+}
+
+export async function updateBulkOrder(
+  token: string,
+  id: string,
+  data: Partial<import('@/types').BulkOrder>
+) {
+  return apiFetch<import('@/types').BulkOrder>(`/api/bulk-orders/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+    headers: authHeaders(token),
+  });
+}
+
+export async function deleteBulkOrder(token: string, id: string) {
+  return apiFetch<{ message: string }>(`/api/bulk-orders/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+}

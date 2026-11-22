@@ -114,3 +114,26 @@ export interface Customer {
   lastVisit?: string;
   createdAt?: string;
 }
+
+export type BulkOrderStatus = 'Booked' | 'Preparing' | 'Completed' | 'Cancelled';
+
+export interface BulkOrder {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  phone: string;
+  eventType: string;
+  menuDetails: string;
+  peopleCount: number;
+  totalPrice: number;
+  advancePaid: number;
+  balanceDue: number;
+  paymentMethod: 'Cash' | 'Card' | 'Scan';
+  orderDate: string;
+  deliveryDate: string;
+  deliveryTime?: string;
+  status: BulkOrderStatus;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
