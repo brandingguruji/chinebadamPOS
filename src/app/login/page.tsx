@@ -1,16 +1,31 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/api';
 import { setToken } from '@/lib/auth';
+
+const REMEMBER_KEY = 'chinebadam_remember_login';
 
 export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.username) setUsername(parsed.username);
+        if (parsed.password) setPassword(parsed.password);
+        setRememberMe(true);
+      }
+    } catch {}
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -18,8 +33,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const { token } = await login(username, password);
+      if (rememberMe) {
+        localStorage.setItem(REMEMBER_KEY, JSON.stringify({ username, password }));
+      } else {
+        localStorage.removeItem(REMEMBER_KEY);
+      }
       setToken(token);
-      router.push('/order-line');
+      router.push('/pos');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -53,6 +73,7 @@ export default function LoginPage() {
             <input
               id="username"
               type="text"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="Enter email or username"
@@ -68,6 +89,7 @@ export default function LoginPage() {
             <input
               id="password"
               type="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
@@ -75,6 +97,16 @@ export default function LoginPage() {
               className="w-full px-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
             />
           </div>
+
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-600 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => setRememberMe(e.target.checked)}
+              className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
+            />
+            Remember username and password
+          </label>
 
           <button
             type="submit"

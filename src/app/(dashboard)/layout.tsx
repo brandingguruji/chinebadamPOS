@@ -24,6 +24,7 @@ import {
   Menu,
   X,
   UserCircle,
+  Tags,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { label: 'Order Line', href: '/order-line', icon: ClipboardList },
   { label: 'Manage Table', href: '/manage-tables', icon: Armchair },
   { label: 'Manage Dishes', href: '/manage-dishes', icon: UtensilsCrossed },
+  { label: 'Categories', href: '/categories', icon: Tags },
   { label: 'Customers', href: '/customers', icon: Users },
   { label: 'Expenses', href: '/expenses', icon: Wallet },
   { label: 'Stock Alerts', href: '/stocks', icon: Package },
@@ -60,9 +62,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [brandLogo, setBrandLogo] = useState('');
   const [lowStockCount, setLowStockCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
   }, [pathname]);
 
   useEffect(() => {
@@ -256,19 +260,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </span>
               )}
             </Link>
-            <Link
-              href="/profile"
-              title="Profile Settings"
-              className="flex items-center gap-2 hover:bg-slate-50 px-2 py-1 rounded-xl transition"
-            >
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
-                {username.charAt(0).toUpperCase()}
-              </div>
-              <div className="hidden sm:block leading-tight">
-                <div className="text-[13px] font-semibold text-slate-800 capitalize">{username}</div>
-                <div className="text-[11px] text-slate-400 capitalize">{role}</div>
-              </div>
-            </Link>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setProfileMenuOpen((v) => !v)}
+                className="flex items-center gap-2 hover:bg-slate-50 px-1.5 py-1 rounded-xl transition"
+                aria-label="Account menu"
+              >
+                <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm">
+                  {username.charAt(0).toUpperCase()}
+                </div>
+                <div className="hidden sm:block leading-tight text-left">
+                  <div className="text-[13px] font-semibold text-slate-800 capitalize">{username}</div>
+                  <div className="text-[11px] text-slate-400 capitalize">{role}</div>
+                </div>
+              </button>
+
+              {profileMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setProfileMenuOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50">
+                    <div className="px-3.5 py-2 border-b border-slate-100">
+                      <div className="text-xs font-bold text-slate-800 capitalize truncate">{username}</div>
+                      <div className="text-[11px] text-slate-400 capitalize">{role}</div>
+                    </div>
+                    <Link
+                      href="/profile"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <UserCircle size={15} className="text-slate-400" />
+                      Profile Settings
+                    </Link>
+                    <Link
+                      href="/settings"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
+                      <Settings size={15} className="text-slate-400" />
+                      Store Settings
+                    </Link>
+                    <div className="my-1 border-t border-slate-100" />
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition"
+                    >
+                      <LogOut size={15} />
+                      Logout
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </header>
 

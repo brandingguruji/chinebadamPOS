@@ -208,7 +208,7 @@ export default function QuickPOSPage() {
   return (
     <div className="flex flex-col lg:flex-row h-full overflow-hidden bg-[#F7F9FA] relative">
       {/* ── Left: Rush-Hour Fast-Tap Menu ── */}
-      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-5 gap-3 sm:gap-4 pb-24 lg:pb-5">
+      <div className={clsx("flex-1 flex flex-col overflow-hidden p-3 sm:p-5 gap-3 sm:gap-4 lg:pb-5", cart.length > 0 ? "pb-20" : "pb-2")}>
         {/* Top Controls */}
         <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
