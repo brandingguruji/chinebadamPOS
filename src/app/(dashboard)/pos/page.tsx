@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
 import { getDishes, getTables, getOrders, createOrder } from '@/lib/api';
+import { loadStoreSettings } from '@/lib/settings';
+import { ThermalReceiptModal, type ReceiptData } from '@/components/ThermalReceiptModal';
 import type { Dish, Table, Order, OrderItem } from '@/types';
 import clsx from 'clsx';
 import {
@@ -13,7 +15,7 @@ import {
   Trash2,
   Banknote,
   CreditCard,
-  ScanLine,
+  Smartphone,
   Printer,
   CheckCircle2,
   Zap,
@@ -21,11 +23,11 @@ import {
   Utensils,
   Calendar,
   X,
-  ShoppingCart,
+  ArrowRight,
 } from 'lucide-react';
 
 type CartItem = { dish: Dish; quantity: number };
-type PayMethod = 'Cash' | 'Card' | 'Scan';
+type PayMethod = 'Cash' | 'Scan' | 'Card';
 type OrderMode = 'Take Away' | 'Dine In';
 
 function getTodayStr() {
@@ -50,11 +52,19 @@ export default function QuickPOSPage() {
   const [payMethod, setPayMethod] = useState<PayMethod>('Cash');
   const [cashReceived, setCashReceived] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+
+  // Rush-hour compact checkout pop-up on mobile
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // Thermal receipt modal
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [taxRate, setTaxRate] = useState(5);
 
   const token = getToken() ?? '';
-
   const toast = useToast();
+
+  useEffect(() => {
+    setTaxRate(loadStoreSettings().taxRate);
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -109,14 +119,43 @@ export default function QuickPOSPage() {
   }
 
   const subtotal = cart.reduce((s, c) => s + Number(c.dish.price || 0) * c.quantity, 0);
-  const tax = parseFloat((subtotal * 0.05).toFixed(2));
+  const tax = parseFloat(((subtotal * taxRate) / 100).toFixed(2));
   const total = parseFloat((subtotal + tax).toFixed(2));
   const totalItems = cart.reduce((s, c) => s + c.quantity, 0);
 
   const cashNum = Number(cashReceived) || 0;
   const changeDue = payMethod === 'Cash' && cashNum > 0 ? Math.max(0, cashNum - total) : 0;
 
-  async function handleCheckout(instantComplete: boolean) {
+  const selectedTable = tables.find((t) => t.id === selectedTableId);
+
+  function openBillPreview(orderNumber = `#F${String(dayOrders.length + 27).padStart(4, '0')}`) {
+    if (cart.length === 0) return;
+    setReceiptData({
+      orderNumber,
+      date: new Date().toLocaleString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      orderType: orderMode,
+      tableNumber: orderMode === 'Dine In' ? selectedTable?.number : undefined,
+      customerName: customerName.trim() || 'Walk-in',
+      paymentMethod: payMethod === 'Scan' ? 'UPI' : payMethod,
+      items: cart.map((c) => ({
+        name: c.dish.name,
+        quantity: c.quantity,
+        unitPrice: Number(c.dish.price || 0),
+      })),
+      subtotal,
+      taxRate,
+      tax,
+      total,
+    });
+  }
+
+  async function handleCheckout(instantComplete: boolean, openReceiptAfter = false) {
     if (cart.length === 0) return;
     setSubmitting(true);
     try {
@@ -136,10 +175,14 @@ export default function QuickPOSPage() {
         status: instantComplete ? 'Served' : 'InKitchen',
       });
 
+      if (openReceiptAfter) {
+        openBillPreview(created.orderNumber);
+      }
+
       setCart([]);
       setCashReceived('');
       setCustomerName('');
-      setMobileCartOpen(false);
+      setCheckoutOpen(false);
       await loadData();
       toast.success(
         `Order ${created.orderNumber} (${orderMode}) — ₹${created.total.toFixed(2)} ${
@@ -164,22 +207,24 @@ export default function QuickPOSPage() {
 
   return (
     <div className="flex flex-col lg:flex-row h-full overflow-hidden bg-[#F7F9FA] relative">
-      {/* ── Left: Fast Tap Menu Grid ── */}
-      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-5 gap-3 sm:gap-4 pb-20 lg:pb-5">
+      {/* ── Left: Rush-Hour Fast-Tap Menu ── */}
+      <div className="flex-1 flex flex-col overflow-hidden p-3 sm:p-5 gap-3 sm:gap-4 pb-24 lg:pb-5">
         {/* Top Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-[#0D9488] text-white flex items-center justify-center">
               <Zap size={16} />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-900 leading-tight">Quick Order POS</h1>
-              <p className="text-[11px] text-slate-500">Tap any item to add instantly</p>
+              <h1 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                Quick Order POS
+              </h1>
+              <p className="text-[11px] text-slate-500">Tap item to add · adjust inline</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-semibold text-teal-800">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-semibold text-teal-800">
               {dayOrders.length} Orders · ₹{dayOrders.reduce((s, o) => s + Number(o.total || 0), 0).toFixed(0)}
             </div>
             <div className="relative flex items-center">
@@ -188,30 +233,30 @@ export default function QuickPOSPage() {
                 type="date"
                 value={selectedDate === 'all' ? '' : selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value || 'all')}
-                className="pl-7 pr-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="pl-7 pr-2 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
-            <div className="relative w-56 max-w-full">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="relative flex-1 sm:w-52">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Quick search item..."
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                placeholder="Search item..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
             </div>
           </div>
         </div>
 
         {/* Category Pills */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-shrink-0 pb-1">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-shrink-0 pb-0.5">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setCategory(cat)}
               className={clsx(
-                'flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold transition-all border',
+                'flex-shrink-0 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all border',
                 category === cat
                   ? 'bg-[#0D9488] text-white border-[#0D9488] shadow-sm'
                   : 'bg-white text-slate-600 border-slate-200 hover:border-teal-300'
@@ -222,99 +267,143 @@ export default function QuickPOSPage() {
           ))}
         </div>
 
-        {/* One-Tap Dish Tiles */}
-        <div className="flex-1 overflow-y-auto pr-1">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        {/* One-Tap Dish Tiles with Inline - Qty + */}
+        <div className="flex-1 overflow-y-auto pr-0.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-3">
             {filteredDishes.map((dish) => {
               const qty = getQty(dish.id);
               return (
-                <button
+                <div
                   key={dish.id}
-                  type="button"
-                  onClick={() => addItem(dish)}
+                  onClick={() => qty === 0 && addItem(dish)}
                   className={clsx(
-                    'relative text-left bg-white rounded-2xl p-3.5 border transition-all active:scale-[0.98] flex flex-col justify-between min-h-[118px]',
+                    'relative bg-white rounded-2xl p-3 border transition-all flex flex-col justify-between min-h-[116px] select-none',
                     qty > 0
-                      ? 'border-[#0D9488] ring-2 ring-[#0D9488]/20 bg-[#F0FDFA]/40'
-                      : 'border-slate-200/80 hover:border-teal-300 hover:shadow-sm'
+                      ? 'border-[#0D9488] ring-2 ring-[#0D9488]/20 bg-[#F0FDFA]/50'
+                      : 'border-slate-200/80 hover:border-teal-300 cursor-pointer active:scale-[0.98]'
                   )}
                 >
-                  {qty > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[24px] h-6 px-1.5 rounded-full bg-[#0D9488] text-white text-xs font-bold flex items-center justify-center shadow">
-                      {qty}
-                    </span>
-                  )}
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-1">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400 mb-0.5 truncate">
                       {dish.category}
                     </div>
                     <div className="text-xs font-bold text-slate-800 leading-snug line-clamp-2">
                       {dish.name}
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
+
+                  <div className="mt-3 flex items-center justify-between gap-1">
                     <span className="text-sm font-extrabold text-[#0D9488]">
                       ₹{Number(dish.price || 0).toFixed(0)}
                     </span>
-                    <span className="w-6 h-6 rounded-full bg-teal-50 text-[#0D9488] flex items-center justify-center">
-                      <Plus size={13} />
-                    </span>
+
+                    {qty === 0 ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addItem(dish);
+                        }}
+                        className="w-7 h-7 rounded-full bg-teal-50 text-[#0D9488] hover:bg-teal-100 flex items-center justify-center"
+                        aria-label={`Add ${dish.name}`}
+                      >
+                        <Plus size={14} />
+                      </button>
+                    ) : (
+                      <div
+                        className="flex items-center gap-1.5 bg-white border border-teal-200 rounded-full px-1 py-0.5 shadow-xs"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => updateQty(dish.id, -1)}
+                          className="w-6 h-6 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700"
+                          aria-label="Decrease"
+                        >
+                          <Minus size={12} />
+                        </button>
+                        <span className="text-xs font-extrabold text-slate-900 min-w-[14px] text-center">
+                          {qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateQty(dish.id, 1)}
+                          className="w-6 h-6 rounded-full bg-[#0D9488] hover:bg-[#0F766E] flex items-center justify-center text-white"
+                          aria-label="Increase"
+                        >
+                          <Plus size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
         </div>
       </div>
 
-      {/* ── Right: Express Checkout Panel ── */}
-      {/* Mobile Floating Cart Bar */}
-      <div className="lg:hidden fixed bottom-16 inset-x-3 z-20">
-        <button
-          type="button"
-          onClick={() => setMobileCartOpen(true)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-[#0D9488] text-white shadow-lg active:scale-[0.99] transition"
-        >
-          <div className="flex items-center gap-2 text-xs font-bold">
-            <ShoppingCart size={16} />
-            <span>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
-          </div>
-          <div className="text-sm font-extrabold">View Bill · ₹{total.toFixed(0)}</div>
-        </button>
-      </div>
+      {/* ── Mobile Floating "Place Order" Bar (Zero Back-and-Forth) ── */}
+      {cart.length > 0 && (
+        <div className="lg:hidden fixed bottom-16 inset-x-3 z-20">
+          <button
+            type="button"
+            onClick={() => setCheckoutOpen(true)}
+            className="w-full flex items-center justify-between px-4 py-3.5 rounded-2xl bg-[#0D9488] hover:bg-[#0F766E] text-white shadow-xl active:scale-[0.99] transition"
+          >
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-white/20">{totalItems}</span>
+              <span>{totalItems === 1 ? 'item' : 'items'} selected</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm font-extrabold">
+              <span>Place Order · ₹{total.toFixed(0)}</span>
+              <ArrowRight size={16} />
+            </div>
+          </button>
+        </div>
+      )}
 
-      {/* Checkout Panel: Drawer on mobile, fixed right sidebar on lg+ */}
-      {mobileCartOpen && (
+      {/* ── Mobile Backdrop ── */}
+      {checkoutOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-slate-900/40"
-          onClick={() => setMobileCartOpen(false)}
+          className="lg:hidden fixed inset-0 z-40 bg-slate-900/45"
+          onClick={() => setCheckoutOpen(false)}
         />
       )}
+
+      {/* ── Checkout Pop-up (Compact Bottom Sheet on Mobile, Right Panel on Desktop) ── */}
       <aside
         className={clsx(
           'bg-white border-l border-slate-200/80 flex flex-col overflow-hidden transition-transform duration-200',
-          'fixed inset-x-0 bottom-0 top-10 z-50 rounded-t-3xl shadow-2xl lg:static lg:inset-auto lg:rounded-none lg:shadow-none lg:w-96 lg:flex-shrink-0',
-          mobileCartOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'
+          'fixed inset-x-0 bottom-0 max-h-[85dvh] z-50 rounded-t-3xl shadow-2xl lg:static lg:inset-auto lg:max-h-none lg:rounded-none lg:shadow-none lg:w-96 lg:flex-shrink-0',
+          checkoutOpen ? 'translate-y-0' : 'translate-y-full lg:translate-y-0'
         )}
       >
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-slate-100">
-          <span className="text-sm font-bold text-slate-800">Current Bill ({totalItems})</span>
+        {/* Mobile Pop-up Header */}
+        <div className="lg:hidden flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+          <div>
+            <div className="text-sm font-bold text-slate-900">Quick Checkout</div>
+            <div className="text-[11px] text-slate-400">
+              {totalItems} items · Total ₹{total.toFixed(2)}
+            </div>
+          </div>
           <button
             type="button"
-            onClick={() => setMobileCartOpen(false)}
-            className="p-1.5 rounded-lg bg-slate-100 text-slate-600"
+            onClick={() => setCheckoutOpen(false)}
+            className="p-1.5 rounded-xl bg-slate-100 text-slate-600"
           >
             <X size={16} />
           </button>
         </div>
-        {/* Order Mode Toggle */}
+
+        {/* Order Type & Table Selector */}
         <div className="p-4 border-b border-slate-100 space-y-3">
           <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
             <button
               type="button"
               onClick={() => setOrderMode('Take Away')}
               className={clsx(
-                'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all',
+                'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
                 orderMode === 'Take Away' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
               )}
             >
@@ -325,7 +414,7 @@ export default function QuickPOSPage() {
               type="button"
               onClick={() => setOrderMode('Dine In')}
               className={clsx(
-                'flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all',
+                'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
                 orderMode === 'Dine In' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
               )}
             >
@@ -334,44 +423,49 @@ export default function QuickPOSPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
+          {orderMode === 'Dine In' ? (
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
+              {tables.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setSelectedTableId(t.id)}
+                  className={clsx(
+                    'flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition',
+                    selectedTableId === t.id
+                      ? 'bg-[#0D9488] text-white border-[#0D9488]'
+                      : 'bg-white text-slate-600 border-slate-200'
+                  )}
+                >
+                  T#{t.number}
+                </button>
+              ))}
+            </div>
+          ) : (
             <input
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Customer (optional)"
-              className="px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-teal-500"
+              placeholder="Customer name / phone (optional)"
+              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-teal-500"
             />
-            {orderMode === 'Dine In' ? (
-              <select
-                value={selectedTableId}
-                onChange={(e) => setSelectedTableId(e.target.value)}
-                className="px-3 py-2 text-xs border border-slate-200 rounded-xl bg-white focus:outline-none focus:ring-1 focus:ring-teal-500"
-              >
-                {tables.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Table #{t.number} ({t.status})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="px-3 py-2 text-xs bg-teal-50 text-teal-700 font-semibold rounded-xl flex items-center justify-center">
-                Counter Pickup
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Cart List */}
-        <div className="flex-1 overflow-y-auto px-4 py-3">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">
-              Current Bill ({totalItems} items)
+        {/* Compact Cart Summary */}
+        <div className="flex-1 overflow-y-auto px-4 py-3 max-h-48 lg:max-h-none">
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">
+              Items ({totalItems})
             </span>
             {cart.length > 0 && (
               <button
-                onClick={() => setCart([])}
-                className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1"
+                type="button"
+                onClick={() => {
+                  setCart([]);
+                  setCheckoutOpen(false);
+                }}
+                className="text-xs text-rose-500 hover:text-rose-600 font-semibold flex items-center gap-1"
               >
                 <Trash2 size={12} />
                 Clear
@@ -380,12 +474,11 @@ export default function QuickPOSPage() {
           </div>
 
           {cart.length === 0 ? (
-            <div className="h-44 flex flex-col items-center justify-center text-slate-400 text-xs text-center">
-              <Zap size={24} className="mb-2 text-slate-300" />
-              Tap items on the left to build a quick bill
+            <div className="py-8 text-center text-slate-400 text-xs">
+              Tap items on the left to start an order
             </div>
           ) : (
-            <div className="space-y-2.5">
+            <div className="space-y-2">
               {cart.map((c) => (
                 <div
                   key={c.dish.id}
@@ -399,20 +492,22 @@ export default function QuickPOSPage() {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <button
+                      type="button"
                       onClick={() => updateQty(c.dish.id, -1)}
-                      className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center"
+                      className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center"
                     >
                       <Minus size={11} />
                     </button>
-                    <span className="w-5 text-center text-xs font-bold">{c.quantity}</span>
+                    <span className="w-4 text-center text-xs font-bold">{c.quantity}</span>
                     <button
+                      type="button"
                       onClick={() => updateQty(c.dish.id, 1)}
-                      className="w-6 h-6 rounded-lg bg-[#0D9488] text-white hover:bg-[#0F766E] flex items-center justify-center"
+                      className="w-6 h-6 rounded-lg bg-[#0D9488] text-white flex items-center justify-center"
                     >
                       <Plus size={11} />
                     </button>
                   </div>
-                  <div className="text-xs font-bold text-slate-900 w-14 text-right">
+                  <div className="text-xs font-bold text-slate-900 w-12 text-right">
                     ₹{(Number(c.dish.price || 0) * c.quantity).toFixed(0)}
                   </div>
                 </div>
@@ -421,15 +516,15 @@ export default function QuickPOSPage() {
           )}
         </div>
 
-        {/* Totals & Payment */}
-        <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/60">
-          <div className="space-y-1.5 text-xs">
+        {/* Payment Method & Actions */}
+        <div className="p-4 border-t border-slate-100 space-y-3 bg-slate-50/70">
+          <div className="space-y-1 text-xs">
             <div className="flex justify-between text-slate-500">
               <span>Subtotal</span>
               <span className="font-semibold text-slate-800">₹{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-slate-500">
-              <span>GST (5%)</span>
+              <span>GST ({taxRate}%)</span>
               <span className="font-semibold text-slate-800">₹{tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-base font-extrabold text-slate-900 pt-1.5 border-t border-slate-200">
@@ -438,28 +533,30 @@ export default function QuickPOSPage() {
             </div>
           </div>
 
-          {/* Payment Methods */}
+          {/* Payment Method: Cash / UPI / Card */}
           <div className="grid grid-cols-3 gap-2">
             {([
               { id: 'Cash', label: 'Cash', icon: Banknote },
-              { id: 'Scan', label: 'UPI / QR', icon: ScanLine },
+              { id: 'Scan', label: 'UPI', icon: Smartphone },
               { id: 'Card', label: 'Card', icon: CreditCard },
-            ] as { id: PayMethod; label: string; icon: React.ElementType }[]).map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setPayMethod(id)}
-                className={clsx(
-                  'flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-semibold border transition',
-                  payMethod === id
-                    ? 'bg-[#E6F4F1] border-[#0D9488] text-slate-900'
-                    : 'bg-white border-slate-200 text-slate-500'
-                )}
-              >
-                <Icon size={13} className={payMethod === id ? 'text-[#0D9488]' : 'text-slate-400'} />
-                {label}
-              </button>
-            ))}
+            ] as { id: PayMethod; label: string; icon: React.ElementType }[]).map(
+              ({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPayMethod(id)}
+                  className={clsx(
+                    'flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition',
+                    payMethod === id
+                      ? 'bg-[#E6F4F1] border-[#0D9488] text-slate-900'
+                      : 'bg-white border-slate-200 text-slate-500'
+                  )}
+                >
+                  <Icon size={14} className={payMethod === id ? 'text-[#0D9488]' : 'text-slate-400'} />
+                  {label}
+                </button>
+              )
+            )}
           </div>
 
           {/* Cash Change Calculator */}
@@ -483,33 +580,36 @@ export default function QuickPOSPage() {
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
               type="button"
-              onClick={() => window.print()}
-              disabled={cart.length === 0}
-              className="flex items-center justify-center gap-1.5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-xl text-xs font-semibold text-slate-700"
+              onClick={() => handleCheckout(true, true)}
+              disabled={cart.length === 0 || submitting}
+              className="flex items-center justify-center gap-1.5 py-3 bg-white border border-teal-600 text-teal-700 hover:bg-teal-50 disabled:opacity-50 rounded-xl text-xs font-bold"
             >
               <Printer size={14} />
-              Print Bill
+              Generate Bill
             </button>
             <button
               type="button"
-              onClick={() => handleCheckout(true)}
+              onClick={() => handleCheckout(true, false)}
               disabled={cart.length === 0 || submitting}
-              className="flex items-center justify-center gap-1.5 py-2.5 bg-[#0D9488] hover:bg-[#0F766E] disabled:bg-teal-300 text-white rounded-xl text-xs font-bold shadow-sm"
+              className="flex items-center justify-center gap-1.5 py-3 bg-[#0D9488] hover:bg-[#0F766E] disabled:bg-teal-300 text-white rounded-xl text-xs font-bold shadow-sm"
             >
               <CheckCircle2 size={14} />
-              {submitting ? 'Saving...' : 'Pay & Complete'}
+              {submitting ? 'Saving...' : 'Confirm & Pay'}
             </button>
           </div>
           <button
             type="button"
-            onClick={() => handleCheckout(false)}
+            onClick={() => handleCheckout(false, false)}
             disabled={cart.length === 0 || submitting}
-            className="w-full py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition"
+            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition"
           >
-            Send to Kitchen (In Kitchen)
+            Send to Kitchen
           </button>
         </div>
       </aside>
+
+      {/* Thermal Printer Receipt Preview & Print Modal */}
+      <ThermalReceiptModal receipt={receiptData} onClose={() => setReceiptData(null)} />
     </div>
   );
 }

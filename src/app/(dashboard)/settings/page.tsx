@@ -3,11 +3,14 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 import { CheckCircle2, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
-
-const SETTINGS_KEY = 'chinebadam_pos_settings';
+import { loadStoreSettings, saveStoreSettings } from '@/lib/settings';
 
 export default function SettingsPage() {
   const [name, setName] = useState('Chinebadam');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gstNumber, setGstNumber] = useState('');
+  const [fssaiNumber, setFssaiNumber] = useState('');
   const [taxRate, setTaxRate] = useState('5');
   const [currency, setCurrency] = useState('INR (₹)');
   const [logo, setLogo] = useState<string>('');
@@ -16,16 +19,15 @@ export default function SettingsPage() {
   const toast = useToast();
 
   useEffect(() => {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (parsed.name) setName(parsed.name);
-        if (parsed.taxRate !== undefined) setTaxRate(String(parsed.taxRate));
-        if (parsed.currency) setCurrency(parsed.currency);
-        if (parsed.logo) setLogo(parsed.logo);
-      } catch {}
-    }
+    const s = loadStoreSettings();
+    setName(s.name);
+    setAddress(s.address);
+    setPhone(s.phone);
+    setGstNumber(s.gstNumber);
+    setFssaiNumber(s.fssaiNumber);
+    setTaxRate(String(s.taxRate));
+    setCurrency(s.currency);
+    setLogo(s.logo);
   }, []);
 
   function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
@@ -57,7 +59,7 @@ export default function SettingsPage() {
     setError('');
     const taxNum = Number(taxRate);
     if (name.trim().length < 2) {
-      setError('Restaurant name must be at least 2 characters.');
+      setError('Store name must be at least 2 characters.');
       return;
     }
     if (Number.isNaN(taxNum) || taxNum < 0 || taxNum > 50) {
@@ -65,31 +67,32 @@ export default function SettingsPage() {
       return;
     }
 
-    localStorage.setItem(
-      SETTINGS_KEY,
-      JSON.stringify({
-        name: name.trim(),
-        taxRate: taxNum,
-        currency,
-        logo,
-      })
-    );
-    window.dispatchEvent(new Event('pos-settings-updated'));
+    saveStoreSettings({
+      name: name.trim(),
+      address: address.trim(),
+      phone: phone.trim(),
+      gstNumber: gstNumber.trim().toUpperCase(),
+      fssaiNumber: fssaiNumber.trim(),
+      taxRate: taxNum,
+      currency,
+      logo,
+    });
+
     setSaved(true);
-    toast.success('Settings & logo updated successfully');
+    toast.success('Store settings & bill details saved');
     setTimeout(() => setSaved(false), 2500);
   }
 
   return (
-    <div className="p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-slate-800 mb-1">Settings</h1>
+    <div className="p-4 sm:p-6 max-w-2xl">
+      <h1 className="text-2xl font-bold text-slate-800 mb-1">Store Settings</h1>
       <p className="text-sm text-slate-500 mb-6">
-        Configure your restaurant branding, logo, and POS preferences.
+        These details appear on your sidebar and printed thermal bills.
       </p>
 
       <form
         onSubmit={handleSave}
-        className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm space-y-5"
+        className="bg-white rounded-2xl p-5 sm:p-6 border border-slate-100 shadow-sm space-y-5"
       >
         {error && (
           <div className="bg-rose-50 border border-rose-200 text-rose-600 text-xs rounded-xl px-3.5 py-2.5">
@@ -99,19 +102,17 @@ export default function SettingsPage() {
         {saved && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl px-3.5 py-2.5 flex items-center gap-2">
             <CheckCircle2 size={14} />
-            Settings &amp; logo saved successfully.
+            Store settings saved successfully.
           </div>
         )}
 
         {/* Logo Upload */}
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-2">
-            Restaurant Logo
-          </label>
+          <label className="block text-xs font-semibold text-slate-600 mb-2">Store Logo</label>
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
               {logo ? (
-                <img src={logo} alt="Restaurant Logo" className="w-full h-full object-contain p-1" />
+                <img src={logo} alt="Store Logo" className="w-full h-full object-contain p-1" />
               ) : (
                 <ImageIcon size={22} className="text-slate-300" />
               )}
@@ -132,7 +133,10 @@ export default function SettingsPage() {
               {logo && (
                 <button
                   type="button"
-                  onClick={() => { setLogo(''); toast.info('Logo removed — click Save Settings to apply'); }}
+                  onClick={() => {
+                    setLogo('');
+                    toast.info('Logo removed — click Save Settings to apply');
+                  }}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold transition"
                 >
                   <Trash2 size={13} />
@@ -140,26 +144,83 @@ export default function SettingsPage() {
                 </button>
               )}
               <p className="w-full text-[11px] text-slate-400">
-                PNG, JPG, WebP, or SVG (max 1 MB). Appears in the sidebar header.
+                PNG, JPG, WebP, or SVG (max 1 MB). Printed in grayscale on thermal receipts.
               </p>
             </div>
           </div>
         </div>
 
+        {/* Store Name & Phone */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Store Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Chinebadam Cafe"
+              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">Store Phone</label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="e.g. +91 98765 43210"
+              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+        </div>
+
+        {/* Store Address */}
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Restaurant Name</label>
-          <input
-            type="text"
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Store Address</label>
+          <textarea
+            rows={2}
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Shop No, Street, Area, City - PIN"
             className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
 
+        {/* GST & FSSAI */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Store GST Number (GSTIN)
+            </label>
+            <input
+              type="text"
+              value={gstNumber}
+              onChange={(e) => setGstNumber(e.target.value)}
+              placeholder="e.g. 19ABCDE1234F1Z5"
+              className="w-full px-3.5 py-2 text-sm uppercase border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Store FSSAI Number
+            </label>
+            <input
+              type="text"
+              value={fssaiNumber}
+              onChange={(e) => setFssaiNumber(e.target.value)}
+              placeholder="e.g. 12824019001234"
+              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+        </div>
+
+        {/* Tax Rate & Currency */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Default Tax Rate (%)</label>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Default GST / Tax (%)
+            </label>
             <input
               type="number"
               min={0}
