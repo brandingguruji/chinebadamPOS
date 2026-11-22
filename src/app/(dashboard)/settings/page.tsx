@@ -3,7 +3,8 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 import { CheckCircle2, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
-import { loadStoreSettings, saveStoreSettings } from '@/lib/settings';
+import { loadStoreSettings, saveStoreSettings, type StoreType } from '@/lib/settings';
+import clsx from 'clsx';
 
 export default function SettingsPage() {
   const [name, setName] = useState('Chinebadam');
@@ -14,6 +15,7 @@ export default function SettingsPage() {
   const [taxRate, setTaxRate] = useState('5');
   const [currency, setCurrency] = useState('INR (₹)');
   const [logo, setLogo] = useState<string>('');
+  const [storeType, setStoreType] = useState<StoreType>('big');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const toast = useToast();
@@ -28,6 +30,7 @@ export default function SettingsPage() {
     setTaxRate(String(s.taxRate));
     setCurrency(s.currency);
     setLogo(s.logo);
+    setStoreType(s.storeType);
   }, []);
 
   function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
@@ -76,6 +79,7 @@ export default function SettingsPage() {
       taxRate: taxNum,
       currency,
       logo,
+      storeType,
     });
 
     setSaved(true);
@@ -105,6 +109,47 @@ export default function SettingsPage() {
             Store settings saved successfully.
           </div>
         )}
+
+        {/* Store Type / Size Mode */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-2">
+            Store Size &amp; Workflow Mode
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {([
+              {
+                id: 'small',
+                title: 'Small Shop',
+                desc: '1-person counter / takeaway. Hides Tables, Dine-In & Send to Kitchen.',
+              },
+              {
+                id: 'medium',
+                title: 'Medium Cafe',
+                desc: 'Tables & Dine-In enabled with fast counter billing.',
+              },
+              {
+                id: 'big',
+                title: 'Big Restaurant',
+                desc: 'Full mode: Tables, Order Line & Send to Kitchen.',
+              },
+            ] as { id: StoreType; title: string; desc: string }[]).map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setStoreType(opt.id)}
+                className={clsx(
+                  'text-left p-3 rounded-xl border transition',
+                  storeType === opt.id
+                    ? 'bg-[#E6F4F1] border-[#0D9488] ring-1 ring-[#0D9488]'
+                    : 'bg-white border-slate-200 hover:border-slate-300'
+                )}
+              >
+                <div className="text-xs font-bold text-slate-800">{opt.title}</div>
+                <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Logo Upload */}
         <div>

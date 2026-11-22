@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
   const expenses = rawExpenses.map(serializeDoc);
 
   const totalSales = parseFloat(
-    orders.reduce((sum, o) => sum + Number(o.total || 0), 0).toFixed(2)
+    orders.filter((o) => o.paymentStatus !== 'Unpaid').reduce((sum, o) => sum + Number(o.total || 0), 0).toFixed(2)
   );
   const totalExpenses = parseFloat(
     expenses.reduce((sum, e) => sum + Number(e.amount || 0), 0).toFixed(2)

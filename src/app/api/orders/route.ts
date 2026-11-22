@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
   try {
     await connectDB();
-    const { tableId, items, paymentMethod, status, customerName, orderType } = await request.json();
+    const { tableId, items, paymentMethod, status, customerName, orderType, paymentStatus, pickupTime } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'At least one item is required' }, { status: 400 });
@@ -101,6 +101,8 @@ export async function POST(request: NextRequest) {
       orderType: orderType ?? (resolvedTableId === 'takeaway' ? 'Take Away' : 'Dine In'),
       customerName: customerName?.trim() || 'Walk-in',
       status: status ?? 'InKitchen',
+      paymentStatus: paymentStatus ?? 'Paid',
+      pickupTime: pickupTime ?? '',
       items: enrichedItems,
       subtotal,
       tax,

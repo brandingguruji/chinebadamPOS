@@ -1,5 +1,7 @@
 export const SETTINGS_KEY = 'chinebadam_pos_settings';
 
+export type StoreType = 'small' | 'medium' | 'big';
+
 export interface StoreSettings {
   name: string;
   logo: string;
@@ -9,6 +11,7 @@ export interface StoreSettings {
   fssaiNumber: string;
   taxRate: number;
   currency: string;
+  storeType: StoreType;
 }
 
 export const DEFAULT_SETTINGS: StoreSettings = {
@@ -20,6 +23,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   fssaiNumber: '',
   taxRate: 5,
   currency: 'INR (₹)',
+  storeType: 'big',
 };
 
 export function loadStoreSettings(): StoreSettings {
@@ -28,9 +32,14 @@ export function loadStoreSettings(): StoreSettings {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = JSON.parse(raw);
+    const validType: StoreType =
+      parsed.storeType === 'small' || parsed.storeType === 'medium' || parsed.storeType === 'big'
+        ? parsed.storeType
+        : DEFAULT_SETTINGS.storeType;
     return {
       ...DEFAULT_SETTINGS,
       ...parsed,
+      storeType: validType,
       taxRate: parsed.taxRate !== undefined ? Number(parsed.taxRate) : DEFAULT_SETTINGS.taxRate,
     };
   } catch {

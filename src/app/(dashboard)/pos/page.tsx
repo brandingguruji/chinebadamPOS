@@ -3,8 +3,8 @@
 import { useEffect, useState, useCallback } from 'react';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
-import { getDishes, getTables, getOrders, createOrder } from '@/lib/api';
-import { loadStoreSettings } from '@/lib/settings';
+import { getDishes, getTables, getOrders, createOrder, updateOrder, deleteOrder } from '@/lib/api';
+import { loadStoreSettings, type StoreType } from '@/lib/settings';
 import { ThermalReceiptModal, type ReceiptData } from '@/components/ThermalReceiptModal';
 import type { Dish, Table, Order, OrderItem } from '@/types';
 import clsx from 'clsx';
@@ -24,6 +24,7 @@ import {
   Calendar,
   X,
   ArrowRight,
+  Clock,
 } from 'lucide-react';
 
 type CartItem = { dish: Dish; quantity: number };
@@ -55,15 +56,27 @@ export default function QuickPOSPage() {
 
   // Rush-hour compact checkout pop-up on mobile
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [heldOpen, setHeldOpen] = useState(false);
+  const [holdPaymentStatus, setHoldPaymentStatus] = useState<'Unpaid' | 'Paid'>('Unpaid');
+  const [pickupOffset, setPickupOffset] = useState<string>('+30 min');
   // Thermal receipt modal
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [taxRate, setTaxRate] = useState(5);
+  const [storeType, setStoreType] = useState<StoreType>('big');
 
   const token = getToken() ?? '';
   const toast = useToast();
 
   useEffect(() => {
-    setTaxRate(loadStoreSettings().taxRate);
+    const sync = () => {
+      const s = loadStoreSettings();
+      setTaxRate(s.taxRate);
+      setStoreType(s.storeType);
+      if (s.storeType === 'small') setOrderMode('Take Away');
+    };
+    sync();
+    window.addEventListener('pos-settings-updated', sync);
+    return () => window.removeEventListener('pos-settings-updated', sync);
   }, []);
 
   const loadData = useCallback(async () => {
@@ -127,6 +140,7 @@ export default function QuickPOSPage() {
   const changeDue = payMethod === 'Cash' && cashNum > 0 ? Math.max(0, cashNum - total) : 0;
 
   const selectedTable = tables.find((t) => t.id === selectedTableId);
+  const heldOrders = dayOrders.filter((o) => o.status === 'Hold');
 
   function openBillPreview(orderNumber = `#F${String(dayOrders.length + 27).padStart(4, '0')}`) {
     if (cart.length === 0) return;
@@ -197,6 +211,52 @@ export default function QuickPOSPage() {
     }
   }
 
+  async function handleHoldOrder() {
+    if (cart.length === 0) return;
+    setSubmitting(true);
+    try {
+      const items: OrderItem[] = cart.map((c) => ({
+        dishId: c.dish.id,
+        dishName: c.dish.name,
+        quantity: c.quantity,
+        unitPrice: Number(c.dish.price || 0),
+      }));
+      const created = await createOrder(token, {
+        tableId: orderMode === 'Dine In' ? selectedTableId : 'takeaway',
+        orderType: orderMode,
+        customerName: customerName.trim() || 'Walk-in',
+        items,
+        paymentMethod: holdPaymentStatus === 'Paid' ? payMethod : undefined,
+        status: 'Hold',
+        paymentStatus: holdPaymentStatus,
+        pickupTime: pickupOffset,
+      });
+      setCart([]);
+      setCustomerName('');
+      setCheckoutOpen(false);
+      await loadData();
+      toast.success(`Held ${created.orderNumber} (${holdPaymentStatus}) for pickup ${pickupOffset}`);
+    } catch {
+      toast.error('Failed to hold order');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleCompleteHeld(order: Order, method?: PayMethod) {
+    try {
+      await updateOrder(token, order.id, {
+        status: 'Served',
+        paymentStatus: 'Paid',
+        paymentMethod: method ?? order.paymentMethod ?? 'Cash',
+      });
+      await loadData();
+      toast.success(`Order ${order.orderNumber} completed!`);
+    } catch {
+      toast.error('Failed to complete order');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -225,8 +285,16 @@ export default function QuickPOSPage() {
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <div className="px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-semibold text-teal-800">
-              {dayOrders.length} Orders · ₹{dayOrders.reduce((s, o) => s + Number(o.total || 0), 0).toFixed(0)}
+              {dayOrders.length} Orders · ₹{dayOrders.filter((o) => o.paymentStatus !== 'Unpaid').reduce((s, o) => s + Number(o.total || 0), 0).toFixed(0)}
             </div>
+            <button
+              type="button"
+              onClick={() => setHeldOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-xs font-bold text-amber-800 hover:bg-amber-100 transition"
+            >
+              <Clock size={13} />
+              Held ({heldOrders.length})
+            </button>
             <div className="relative flex items-center">
               <Calendar size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
               <input
@@ -398,30 +466,32 @@ export default function QuickPOSPage() {
 
         {/* Order Type & Table Selector */}
         <div className="p-4 border-b border-slate-100 space-y-3">
-          <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
-            <button
-              type="button"
-              onClick={() => setOrderMode('Take Away')}
-              className={clsx(
-                'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
-                orderMode === 'Take Away' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-              )}
-            >
-              <ShoppingBag size={14} />
-              Take Away
-            </button>
-            <button
-              type="button"
-              onClick={() => setOrderMode('Dine In')}
-              className={clsx(
-                'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
-                orderMode === 'Dine In' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-              )}
-            >
-              <Utensils size={14} />
-              Dine In
-            </button>
-          </div>
+          {storeType !== 'small' && (
+            <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setOrderMode('Take Away')}
+                className={clsx(
+                  'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
+                  orderMode === 'Take Away' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                )}
+              >
+                <ShoppingBag size={14} />
+                Take Away
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderMode('Dine In')}
+                className={clsx(
+                  'flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-bold transition-all',
+                  orderMode === 'Dine In' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
+                )}
+              >
+                <Utensils size={14} />
+                Dine In
+              </button>
+            </div>
+          )}
 
           {orderMode === 'Dine In' ? (
             <div className="flex gap-1.5 overflow-x-auto scrollbar-hide pb-0.5">
@@ -576,6 +646,55 @@ export default function QuickPOSPage() {
             </div>
           )}
 
+          {/* Hold / Pickup Later Options */}
+          <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold text-amber-900">Pickup Later Options</span>
+              <div className="flex gap-1">
+                {(['Unpaid', 'Paid'] as const).map((ps) => (
+                  <button
+                    key={ps}
+                    type="button"
+                    onClick={() => setHoldPaymentStatus(ps)}
+                    className={clsx(
+                      'px-2 py-0.5 rounded-lg text-[10px] font-bold border',
+                      holdPaymentStatus === ps
+                        ? 'bg-amber-600 text-white border-amber-600'
+                        : 'bg-white text-amber-800 border-amber-200'
+                    )}
+                  >
+                    {ps}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {['+15 min', '+30 min', '+1 hr'].map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setPickupOffset(t)}
+                  className={clsx(
+                    'flex-1 py-1 rounded-lg text-[10px] font-semibold border',
+                    pickupOffset === t
+                      ? 'bg-amber-600 text-white border-amber-600'
+                      : 'bg-white text-slate-600 border-slate-200'
+                  )}
+                >
+                  {t}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handleHoldOrder}
+                disabled={cart.length === 0 || submitting}
+                className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white text-[11px] font-bold"
+              >
+                Hold
+              </button>
+            </div>
+          </div>
+
           {/* Action Buttons */}
           <div className="grid grid-cols-2 gap-2 pt-1">
             <button
@@ -597,16 +716,125 @@ export default function QuickPOSPage() {
               {submitting ? 'Saving...' : 'Confirm & Pay'}
             </button>
           </div>
-          <button
-            type="button"
-            onClick={() => handleCheckout(false, false)}
-            disabled={cart.length === 0 || submitting}
-            className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition"
-          >
-            Send to Kitchen
-          </button>
+          {storeType === 'big' && (
+            <button
+              type="button"
+              onClick={() => handleCheckout(false, false)}
+              disabled={cart.length === 0 || submitting}
+              className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-xl text-xs font-semibold transition"
+            >
+              Send to Kitchen
+            </button>
+          )}
         </div>
       </aside>
+
+      {/* Held / Pickup Later Orders Modal */}
+      {heldOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/45 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl max-h-[80dvh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="text-sm font-bold text-slate-900">
+                Held / Pickup Later ({heldOrders.length})
+              </div>
+              <button
+                type="button"
+                onClick={() => setHeldOpen(false)}
+                className="p-1.5 rounded-lg bg-slate-100 text-slate-600"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {heldOrders.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400">
+                  No held orders waiting for pickup.
+                </div>
+              ) : (
+                heldOrders.map((o) => (
+                  <div
+                    key={o.id}
+                    className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">
+                          {o.orderNumber} · {o.customerName || 'Walk-in'}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {o.items.map((i) => `${i.quantity}x ${i.dishName}`).join(', ')}
+                        </div>
+                        {o.pickupTime && (
+                          <div className="text-[10px] text-amber-700 font-semibold mt-0.5">
+                            Pickup: {o.pickupTime}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-extrabold text-slate-900">
+                          ₹{Number(o.total).toFixed(0)}
+                        </div>
+                        <span
+                          className={clsx(
+                            'inline-block text-[10px] font-bold px-2 py-0.5 rounded-full',
+                            o.paymentStatus === 'Unpaid'
+                              ? 'bg-rose-100 text-rose-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                          )}
+                        >
+                          {o.paymentStatus || 'Paid'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {o.paymentStatus === 'Unpaid' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteHeld(o, 'Cash')}
+                            className="flex-1 py-1.5 rounded-lg bg-[#0D9488] text-white text-[11px] font-bold"
+                          >
+                            Pay Cash &amp; Done
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleCompleteHeld(o, 'Scan')}
+                            className="flex-1 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-bold"
+                          >
+                            Pay UPI &amp; Done
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleCompleteHeld(o)}
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-600 text-white text-[11px] font-bold"
+                        >
+                          Mark Handed Over
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Cancel held order ${o.orderNumber}?`)) return;
+                          await deleteOrder(token, o.id);
+                          await loadData();
+                          toast.success(`Cancelled ${o.orderNumber}`);
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-600 text-[11px] font-bold"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Thermal Printer Receipt Preview & Print Modal */}
       <ThermalReceiptModal receipt={receiptData} onClose={() => setReceiptData(null)} />

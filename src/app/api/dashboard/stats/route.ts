@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
   const activeStatuses = ['InKitchen', 'WaitList', 'Ready'];
   const totalOrders = orders.length;
   const totalRevenue = orders
-    .filter((o) => o.status === 'Served')
+    .filter((o) => o.status === 'Served' && o.paymentStatus !== 'Unpaid')
     .reduce((sum, o) => sum + Number(o.total || o.totalAmount || 0), 0);
   const activeOrders = orders.filter((o) => activeStatuses.includes(o.status)).length;
   const totalTables = tables.length;

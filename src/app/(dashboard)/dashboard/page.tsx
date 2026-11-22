@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getToken } from '@/lib/auth';
 import { getDashboardStats, getStocks, updateStock } from '@/lib/api';
 import { useToast } from '@/components/ToastProvider';
+import { loadStoreSettings, type StoreType } from '@/lib/settings';
 import type { DashboardStats, StockItem } from '@/types';
 import {
   ShoppingBag,
@@ -68,9 +69,17 @@ export default function DashboardPage() {
   const [lowStocks, setLowStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [restockingId, setRestockingId] = useState<string | null>(null);
+  const [storeType, setStoreType] = useState<StoreType>('big');
   const alertedRef = useRef(false);
 
   const toast = useToast();
+
+  useEffect(() => {
+    const sync = () => setStoreType(loadStoreSettings().storeType);
+    sync();
+    window.addEventListener('pos-settings-updated', sync);
+    return () => window.removeEventListener('pos-settings-updated', sync);
+  }, []);
 
   useEffect(() => {
     const token = getToken();
@@ -223,7 +232,7 @@ export default function DashboardPage() {
           )}
 
           {/* KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div className={clsx('grid grid-cols-1 sm:grid-cols-2 gap-5', storeType === 'small' ? 'lg:grid-cols-2' : 'lg:grid-cols-4')}>
             <StatCard
               title="Total Orders"
               value={stats?.totalOrders ?? 0}
@@ -234,24 +243,28 @@ export default function DashboardPage() {
             <StatCard
               title="Total Revenue"
               value={`₹${(stats?.totalRevenue ?? 0).toFixed(2)}`}
-              subtitle={`Served orders (${dateLabel})`}
+              subtitle={`Completed orders (${dateLabel})`}
               icon={IndianRupee}
               color="bg-emerald-500"
             />
-            <StatCard
-              title="Active Orders"
-              value={stats?.activeOrders ?? 0}
-              subtitle="In kitchen & waiting"
-              icon={Flame}
-              color="bg-orange-500"
-            />
-            <StatCard
-              title="Tables"
-              value={`${stats?.occupiedTables ?? 0} / ${stats?.totalTables ?? 0}`}
-              subtitle="Occupied / Total"
-              icon={Table2}
-              color="bg-violet-500"
-            />
+            {storeType !== 'small' && (
+              <>
+                <StatCard
+                  title="Active Orders"
+                  value={stats?.activeOrders ?? 0}
+                  subtitle="In kitchen & waiting"
+                  icon={Flame}
+                  color="bg-orange-500"
+                />
+                <StatCard
+                  title="Tables"
+                  value={`${stats?.occupiedTables ?? 0} / ${stats?.totalTables ?? 0}`}
+                  subtitle="Occupied / Total"
+                  icon={Table2}
+                  color="bg-violet-500"
+                />
+              </>
+            )}
           </div>
 
           {/* Dedicated Low Stock Items Panel on Dashboard */}

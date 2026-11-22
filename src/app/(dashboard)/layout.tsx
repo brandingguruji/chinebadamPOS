@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { isAuthenticated, getToken, removeToken } from '@/lib/auth';
 import { getMe, getStocks } from '@/lib/api';
+import { loadStoreSettings, type StoreType } from '@/lib/settings';
 import clsx from 'clsx';
 import {
   LayoutGrid,
@@ -60,6 +61,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [role, setRole] = useState('Admin');
   const [brandName, setBrandName] = useState('Chinebadam');
   const [brandLogo, setBrandLogo] = useState('');
+  const [storeType, setStoreType] = useState<StoreType>('big');
   const [lowStockCount, setLowStockCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -72,12 +74,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     const syncBrand = () => {
       try {
-        const raw = localStorage.getItem('chinebadam_pos_settings');
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed.name) setBrandName(parsed.name);
-          setBrandLogo(parsed.logo || '');
-        }
+        const s = loadStoreSettings();
+        if (s.name) setBrandName(s.name);
+        setBrandLogo(s.logo || '');
+        setStoreType(s.storeType);
       } catch {}
     };
     syncBrand();
@@ -147,7 +147,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+        {NAV_ITEMS.filter(({ href }) => {
+          if (storeType === 'small' && (href === '/manage-tables' || href === '/order-line')) {
+            return false;
+          }
+          return true;
+        }).map(({ label, href, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/');
           return (
             <Link
@@ -322,7 +327,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Mobile Bottom Navigation Bar */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-30 bg-white border-t border-slate-200 px-2 py-1.5 flex items-center justify-around">
-          {MOBILE_TABS.map(({ label, href, icon: Icon }) => {
+          {(storeType === 'small'
+            ? [
+                { label: 'POS', href: '/pos', icon: Zap },
+                { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+                { label: 'Expenses', href: '/expenses', icon: Wallet },
+                { label: 'Reports', href: '/reports', icon: BarChart3 },
+              ]
+            : MOBILE_TABS
+          ).map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
             return (
               <Link

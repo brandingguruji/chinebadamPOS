@@ -129,7 +129,7 @@ export async function getOrders(token: string, status?: string, date?: string) {
 
 export async function createOrder(
   token: string,
-  data: { tableId?: string; items: import('@/types').OrderItem[]; paymentMethod?: string; status?: import('@/types').OrderStatus; orderType?: string; customerName?: string }
+  data: { tableId?: string; items: import('@/types').OrderItem[]; paymentMethod?: string; status?: import('@/types').OrderStatus; paymentStatus?: 'Paid' | 'Unpaid'; pickupTime?: string; orderType?: string; customerName?: string }
 ) {
   return apiFetch<import('@/types').Order>('/api/orders', {
     method: 'POST',
@@ -141,7 +141,7 @@ export async function createOrder(
 export async function updateOrder(
   token: string,
   id: string,
-  data: Partial<Pick<import('@/types').Order, 'status' | 'items' | 'paymentMethod'>>
+  data: Partial<Pick<import('@/types').Order, 'status' | 'items' | 'paymentMethod' | 'paymentStatus' | 'pickupTime'>>
 ) {
   return apiFetch<import('@/types').Order>(`/api/orders/${id}`, {
     method: 'PUT',

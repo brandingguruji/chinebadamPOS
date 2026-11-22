@@ -49,6 +49,8 @@ const OrderSchema = new Schema(
     tableId: { type: String },
     tableNumber: { type: Number, default: 1 },
     status: { type: String, default: 'InKitchen' },
+    paymentStatus: { type: String, enum: ['Paid', 'Unpaid'], default: 'Paid' },
+    pickupTime: { type: String, default: '' },
     items: { type: [OrderItemSchema], default: [] },
     subtotal: { type: Number, default: 0 },
     tax: { type: Number, default: 0 },

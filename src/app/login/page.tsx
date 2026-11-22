@@ -4,6 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/api';
 import { setToken } from '@/lib/auth';
+import { loadStoreSettings } from '@/lib/settings';
 
 const REMEMBER_KEY = 'chinebadam_remember_login';
 
@@ -12,6 +13,8 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [brandName, setBrandName] = useState('Chinebadam');
+  const [brandLogo, setBrandLogo] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -25,6 +28,9 @@ export default function LoginPage() {
         setRememberMe(true);
       }
     } catch {}
+    const s = loadStoreSettings();
+    if (s.name) setBrandName(s.name);
+    if (s.logo) setBrandLogo(s.logo);
   }, []);
 
   async function handleSubmit(e: FormEvent) {
@@ -52,10 +58,16 @@ export default function LoginPage() {
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 bg-teal-600 rounded-2xl flex items-center justify-center mb-4 rotate-45">
-            <div className="-rotate-45 w-8 h-8 bg-white rounded-sm opacity-80" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800">Chinebadam</h1>
+          {brandLogo ? (
+            <div className="w-20 h-20 rounded-2xl overflow-hidden bg-slate-50 border border-slate-100 flex items-center justify-center mb-4 p-1.5 shadow-sm">
+              <img src={brandLogo} alt={brandName} className="w-full h-full object-contain" />
+            </div>
+          ) : (
+            <div className="w-16 h-16 bg-teal-600 rounded-2xl flex items-center justify-center mb-4 rotate-45">
+              <div className="-rotate-45 w-8 h-8 bg-white rounded-sm opacity-80" />
+            </div>
+          )}
+          <h1 className="text-2xl font-bold text-slate-800">{brandName}</h1>
           <p className="text-sm text-slate-500 mt-1">Restaurant POS System</p>
         </div>
 

@@ -30,7 +30,7 @@ export interface Dish {
   createdAt: string;
 }
 
-export type OrderStatus = 'InKitchen' | 'WaitList' | 'Ready' | 'Served';
+export type OrderStatus = 'InKitchen' | 'WaitList' | 'Ready' | 'Served' | 'Hold';
 
 export interface OrderItem {
   dishId: string;
@@ -47,6 +47,8 @@ export interface Order {
   orderType?: 'Dine In' | 'Take Away';
   customerName?: string;
   status: OrderStatus;
+  paymentStatus?: 'Paid' | 'Unpaid';
+  pickupTime?: string;
   items: OrderItem[];
   subtotal: number;
   tax: number;
