@@ -22,6 +22,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await connectDB();
     const body = await request.json();
     const name = String(body.name ?? '').trim();
+    const hasImage = body.image !== undefined;
+    const image = hasImage ? String(body.image ?? '').trim() : undefined;
 
     if (name.length < 2) {
       return NextResponse.json({ error: 'Category name must be at least 2 characters' }, { status: 400 });
@@ -41,7 +43,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     }
 
     const oldName = existing.name;
-    const updated = await CategoryModel.findByIdAndUpdate(params.id, { name }, { new: true });
+    const updatePayload: Record<string, string> = { name };
+    if (hasImage) updatePayload.image = image ?? '';
+    const updated = await CategoryModel.findByIdAndUpdate(params.id, updatePayload, { new: true });
 
     // Sync dishes that used the old category name
     if (oldName && oldName !== name) {

@@ -133,6 +133,7 @@ export default function PublicMenuPage() {
 
   // Customer order details for WhatsApp message
   const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const [orderType, setOrderType] = useState<'Take Away' | 'Delivery' | 'Dine In'>('Take Away');
   const [customerNote, setCustomerNote] = useState('');
 
@@ -214,6 +215,9 @@ export default function PublicMenuPage() {
     if (customerName.trim()) {
       lines.push(`Customer: ${customerName.trim()}`);
     }
+    if (customerPhone.trim()) {
+      lines.push(`Phone: ${customerPhone.trim()}`);
+    }
     lines.push('');
     lines.push('*Items:*');
     cart.forEach((c, idx) => {
@@ -226,9 +230,28 @@ export default function PublicMenuPage() {
       lines.push(`Note: ${customerNote.trim()}`);
     }
 
+    // Save Order Query to MongoDB in background (keepalive ensures it completes even as WhatsApp opens)
+    fetch('/api/public/order-queries', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        customerName: customerName.trim() || 'Online Customer',
+        phone: customerPhone.trim(),
+        orderType,
+        note: customerNote.trim(),
+        items: cart.map((c) => ({
+          dishId: c.dish.id,
+          dishName: c.dish.name,
+          quantity: c.quantity,
+          unitPrice: Number(c.dish.price || 0),
+        })),
+      }),
+    }).catch(() => {});
+
     const url = buildWhatsAppUrl(store.whatsappLink, store.phone, lines.join('\n'));
     if (!url) {
-      alert('WhatsApp link/phone is not configured in Store Settings yet.');
+      alert('Order query saved! WhatsApp link/phone is not configured in Store Settings yet.');
       return;
     }
     window.open(url, '_blank', 'noopener,noreferrer');
@@ -355,13 +378,22 @@ export default function PublicMenuPage() {
           ))}
         </div>
 
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder="Your name (optional)"
-          className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder="Your name (optional)"
+            className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+          <input
+            type="tel"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            placeholder="Phone number (optional)"
+            className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
 
         <input
           type="text"

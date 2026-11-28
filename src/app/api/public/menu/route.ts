@@ -18,7 +18,15 @@ export async function GET() {
     ]);
 
     const dishes = rawDishes.map(serializeDoc);
-    const dbCategoryNames = rawCategories.map((c) => serializeDoc(c).name).filter(Boolean);
+    const dbCategories = rawCategories.map(serializeDoc).filter((c) => c?.name);
+    const categoryImageMap = new Map<string, string>();
+    for (const c of dbCategories) {
+      if (c.name && c.image) {
+        categoryImageMap.set(c.name, c.image);
+      }
+    }
+
+    const dbCategoryNames = dbCategories.map((c) => c.name);
     const dishCategoryNames = dishes.map((d) => d.category).filter(Boolean);
 
     // Combine categories preserving DB order, then any extra categories found on dishes
@@ -27,11 +35,12 @@ export async function GET() {
     const categories = uniqueCategories
       .map((catName) => {
         const catDishes = dishes.filter((d) => d.category === catName);
-        const firstImage = catDishes.find((d) => d.image)?.image || '';
+        const catImage = categoryImageMap.get(catName) || '';
+        const firstDishImage = catDishes.find((d) => d.image)?.image || '';
         return {
           name: catName,
           count: catDishes.length,
-          image: firstImage,
+          image: catImage || firstDishImage,
         };
       })
       .filter((c) => c.count > 0);

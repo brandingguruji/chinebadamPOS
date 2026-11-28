@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const body = await request.json();
     const name = String(body.name ?? '').trim();
+    const image = String(body.image ?? '').trim();
 
     if (name.length < 2) {
       return NextResponse.json({ error: 'Category name must be at least 2 characters' }, { status: 400 });
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: `Category "${name}" already exists` }, { status: 409 });
     }
 
-    const created = await CategoryModel.create({ name });
+    const created = await CategoryModel.create({ name, image });
     return NextResponse.json(serializeDoc(created), { status: 201 });
   } catch {
     return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });

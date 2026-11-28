@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { getToken } from '@/lib/auth';
 import { useToast } from '@/components/ToastProvider';
-import { getDishes, getTables, getOrders, createOrder, updateOrder, deleteOrder } from '@/lib/api';
+import { getDishes, getTables, getOrders, createOrder, updateOrder, deleteOrder, getOrderQueries, convertOrderQuery, deleteOrderQuery } from '@/lib/api';
 import { loadStoreSettings, type StoreType } from '@/lib/settings';
 import { ThermalReceiptModal, type ReceiptData } from '@/components/ThermalReceiptModal';
-import type { Dish, Table, Order, OrderItem } from '@/types';
+import type { Dish, Table, Order, OrderItem, OrderQuery } from '@/types';
 import clsx from 'clsx';
 import {
   Search,
@@ -25,6 +26,7 @@ import {
   X,
   ArrowRight,
   Clock,
+  Globe,
 } from 'lucide-react';
 
 type CartItem = { dish: Dish; quantity: number };
@@ -57,6 +59,9 @@ export default function QuickPOSPage() {
   // Rush-hour compact checkout pop-up on mobile
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [heldOpen, setHeldOpen] = useState(false);
+  const [orderQueries, setOrderQueries] = useState<OrderQuery[]>([]);
+  const [queriesOpen, setQueriesOpen] = useState(false);
+  const [convertingQueryId, setConvertingQueryId] = useState<string | null>(null);
   const [holdPaymentStatus, setHoldPaymentStatus] = useState<'Unpaid' | 'Paid'>('Unpaid');
   const [pickupOffset, setPickupOffset] = useState<string>('+30 min');
   // Thermal receipt modal
@@ -81,14 +86,16 @@ export default function QuickPOSPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [d, t, o] = await Promise.all([
+      const [d, t, o, q] = await Promise.all([
         getDishes(token),
         getTables(token),
         getOrders(token, undefined, selectedDate),
+        getOrderQueries(token, 'Pending').catch(() => []),
       ]);
       setDishes(d.filter((item) => item.available !== false));
       setTables(t);
       setDayOrders(o);
+      setOrderQueries(q);
       if (t.length > 0 && !selectedTableId) setSelectedTableId(t[0].id);
     } catch (e) {
       console.error(e);
@@ -100,6 +107,17 @@ export default function QuickPOSPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Auto-poll pending external order queries every 20s so new website queries appear live
+  useEffect(() => {
+    if (!token) return;
+    const interval = setInterval(() => {
+      getOrderQueries(token, 'Pending')
+        .then(setOrderQueries)
+        .catch(() => {});
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   const categories = ['All', ...Array.from(new Set(dishes.map((d) => d.category).filter(Boolean)))];
 
@@ -257,6 +275,30 @@ export default function QuickPOSPage() {
     }
   }
 
+  async function handleConvertQuery(q: OrderQuery, method: PayMethod) {
+    setConvertingQueryId(q.id);
+    try {
+      const res = await convertOrderQuery(token, q.id, method, 'Served');
+      await loadData();
+      toast.success(`Converted ${q.queryNumber} → Order ${res.order.orderNumber} (${method === 'Scan' ? 'UPI' : method})`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to convert query');
+    } finally {
+      setConvertingQueryId(null);
+    }
+  }
+
+  async function handleDismissQuery(q: OrderQuery) {
+    if (!confirm(`Delete order query ${q.queryNumber}?`)) return;
+    try {
+      await deleteOrderQuery(token, q.id);
+      setOrderQueries((prev) => prev.filter((item) => item.id !== q.id));
+      toast.success(`Dismissed ${q.queryNumber}`);
+    } catch {
+      toast.error('Failed to dismiss query');
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -284,9 +326,13 @@ export default function QuickPOSPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-            <div className="px-2.5 py-1.5 rounded-xl bg-teal-50 border border-teal-200 text-xs font-semibold text-teal-800">
+            <Link
+              href="/orders"
+              className="px-2.5 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-200 text-xs font-semibold text-teal-800 transition cursor-pointer"
+              title="View all orders"
+            >
               {dayOrders.length} Orders · ₹{dayOrders.filter((o) => o.paymentStatus !== 'Unpaid').reduce((s, o) => s + Number(o.total || 0), 0).toFixed(0)}
-            </div>
+            </Link>
             <button
               type="button"
               onClick={() => setHeldOpen(true)}
@@ -294,6 +340,25 @@ export default function QuickPOSPage() {
             >
               <Clock size={13} />
               Held ({heldOrders.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setQueriesOpen(true);
+                getOrderQueries(token, 'Pending').then(setOrderQueries).catch(() => {});
+              }}
+              className={clsx(
+                'relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition',
+                orderQueries.length > 0
+                  ? 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700 shadow-sm'
+                  : 'bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100'
+              )}
+            >
+              <Globe size={13} />
+              Queries ({orderQueries.length})
+              {orderQueries.length > 0 && (
+                <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping" />
+              )}
             </button>
             <div className="relative flex items-center">
               <Calendar size={13} className="absolute left-2.5 text-slate-400 pointer-events-none" />
@@ -830,6 +895,122 @@ export default function QuickPOSPage() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Online Order Queries Modal (1-Tap Convert to Paid Order) */}
+      {queriesOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/45 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[82dvh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-indigo-50/50">
+              <div className="flex items-center gap-2">
+                <Globe size={16} className="text-indigo-600" />
+                <div>
+                  <div className="text-sm font-bold text-slate-900">
+                    Online Order Queries ({orderQueries.length})
+                  </div>
+                  <div className="text-[11px] text-slate-500">
+                    Tap payment method once paid to convert into a POS Order
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setQueriesOpen(false)}
+                className="p-1.5 rounded-lg bg-white text-slate-600 border border-slate-200"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {orderQueries.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400">
+                  No pending online order queries right now.
+                </div>
+              ) : (
+                orderQueries.map((q) => {
+                  const busy = convertingQueryId === q.id;
+                  return (
+                    <div
+                      key={q.id}
+                      className="p-3.5 rounded-2xl border border-indigo-100 bg-slate-50/70 space-y-2.5"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs font-extrabold text-indigo-700">{q.queryNumber}</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                              {q.orderType}
+                            </span>
+                            <span className="text-xs font-bold text-slate-900 truncate">
+                              {q.customerName || 'Online Customer'}
+                            </span>
+                          </div>
+                          {q.phone && (
+                            <div className="text-[11px] text-slate-500 mt-0.5">Ph: {q.phone}</div>
+                          )}
+                          <div className="text-xs text-slate-700 font-medium mt-1">
+                            {q.items.map((i) => `${i.quantity}x ${i.dishName}`).join(', ')}
+                          </div>
+                          {q.note && (
+                            <div className="text-[11px] text-amber-700 mt-0.5">Note: {q.note}</div>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <div className="text-sm font-extrabold text-slate-900">
+                            ₹{Number(q.total || 0).toFixed(0)}
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {new Date(q.createdAt).toLocaleTimeString('en-IN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleConvertQuery(q, 'Scan')}
+                          className="flex-1 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] disabled:opacity-50 text-white text-[11px] font-bold transition"
+                        >
+                          {busy ? 'Converting...' : 'Paid UPI → Order'}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleConvertQuery(q, 'Cash')}
+                          className="flex-1 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-[11px] font-bold transition"
+                        >
+                          Paid Cash → Order
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleConvertQuery(q, 'Card')}
+                          className="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-50 text-slate-700 text-[11px] font-bold transition"
+                        >
+                          Card
+                        </button>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => handleDismissQuery(q)}
+                          className="px-2.5 py-2 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition"
+                          title="Dismiss query"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

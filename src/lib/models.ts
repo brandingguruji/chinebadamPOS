@@ -74,7 +74,10 @@ const ExpenseSchema = new Schema(
 
 // Maps directly to your existing `categories` collection
 const CategorySchema = new Schema(
-  { name: { type: String } },
+  {
+    name: { type: String },
+    image: { type: String, default: '' },
+  },
   { timestamps: true, strict: false, collection: 'categories' }
 );
 
@@ -171,3 +174,24 @@ const StoreSettingsSchema = new Schema(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const StoreSettingsModel: Model<any> =
   mongoose.models.StoreSettings || mongoose.model('StoreSettings', StoreSettingsSchema);
+
+const OrderQuerySchema = new Schema(
+  {
+    queryNumber: { type: String },
+    customerName: { type: String, default: 'Online Customer' },
+    phone: { type: String, default: '' },
+    orderType: { type: String, default: 'Take Away' },
+    note: { type: String, default: '' },
+    items: { type: [OrderItemSchema], default: [] },
+    subtotal: { type: Number, default: 0 },
+    tax: { type: Number, default: 0 },
+    total: { type: Number, default: 0 },
+    status: { type: String, enum: ['Pending', 'Converted', 'Dismissed'], default: 'Pending' },
+    convertedOrderId: { type: String, default: '' },
+  },
+  { timestamps: true, strict: false, collection: 'orderqueries' }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const OrderQueryModel: Model<any> =
+  mongoose.models.OrderQuery || mongoose.model('OrderQuery', OrderQuerySchema);

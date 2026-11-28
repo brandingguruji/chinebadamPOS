@@ -224,18 +224,18 @@ export async function getCategories(token: string) {
   });
 }
 
-export async function createCategory(token: string, name: string) {
+export async function createCategory(token: string, name: string, image?: string) {
   return apiFetch<import('@/types').Category>('/api/categories', {
     method: 'POST',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, image: image?.trim() || '' }),
     headers: authHeaders(token),
   });
 }
 
-export async function updateCategory(token: string, id: string, name: string) {
+export async function updateCategory(token: string, id: string, name: string, image?: string) {
   return apiFetch<import('@/types').Category>(`/api/categories/${id}`, {
     method: 'PUT',
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, ...(image !== undefined ? { image: image.trim() } : {}) }),
     headers: authHeaders(token),
   });
 }
@@ -353,6 +353,37 @@ export async function updateBulkOrder(
 
 export async function deleteBulkOrder(token: string, id: string) {
   return apiFetch<{ message: string }>(`/api/bulk-orders/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(token),
+  });
+}
+
+// External Order Queries
+export async function getOrderQueries(token: string, status?: string) {
+  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  return apiFetch<import('@/types').OrderQuery[]>(`/api/order-queries${qs}`, {
+    headers: authHeaders(token),
+  });
+}
+
+export async function convertOrderQuery(
+  token: string,
+  id: string,
+  paymentMethod: 'Cash' | 'Scan' | 'Card',
+  status: 'Served' | 'InKitchen' = 'Served'
+) {
+  return apiFetch<{ order: import('@/types').Order; query: import('@/types').OrderQuery }>(
+    `/api/order-queries/${id}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ paymentMethod, status }),
+      headers: authHeaders(token),
+    }
+  );
+}
+
+export async function deleteOrderQuery(token: string, id: string) {
+  return apiFetch<{ message: string }>(`/api/order-queries/${id}`, {
     method: 'DELETE',
     headers: authHeaders(token),
   });

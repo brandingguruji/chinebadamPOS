@@ -55,6 +55,7 @@ export interface Order {
   donation: number;
   total: number;
   paymentMethod: 'Cash' | 'Card' | 'Scan' | null;
+  sourceQueryNumber?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -90,6 +91,7 @@ export interface DashboardStats {
 export interface Category {
   id: string;
   name: string;
+  image?: string;
   createdAt?: string;
 }
 
@@ -135,5 +137,24 @@ export interface BulkOrder {
   status: BulkOrderStatus;
   notes?: string;
   createdAt?: string;
+  updatedAt?: string;
+}
+
+export type OrderQueryStatus = 'Pending' | 'Converted' | 'Dismissed';
+
+export interface OrderQuery {
+  id: string;
+  queryNumber: string;
+  customerName: string;
+  phone?: string;
+  orderType: 'Take Away' | 'Delivery' | 'Dine In';
+  note?: string;
+  items: OrderItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: OrderQueryStatus;
+  convertedOrderId?: string;
+  createdAt: string;
   updatedAt?: string;
 }

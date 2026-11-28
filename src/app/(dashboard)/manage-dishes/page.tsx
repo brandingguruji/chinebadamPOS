@@ -42,10 +42,12 @@ export default function ManageDishesPage() {
   // Categories modal state
   const [showCatModal, setShowCatModal] = useState(false);
   const [newCatName, setNewCatName] = useState('');
+  const [newCatImage, setNewCatImage] = useState('');
   const [catError, setCatError] = useState('');
   const [catSaving, setCatSaving] = useState(false);
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState('');
+  const [editingCatImage, setEditingCatImage] = useState('');
 
 
   const token = getToken() ?? '';
@@ -188,9 +190,10 @@ export default function ManageDishesPage() {
     }
     setCatSaving(true);
     try {
-      const created = await createCategory(token, trimmed);
+      const created = await createCategory(token, trimmed, newCatImage.trim());
       setCategoriesList((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       setNewCatName('');
+      setNewCatImage('');
       toast.success(`Category "${created.name}" added`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add category';
@@ -209,7 +212,7 @@ export default function ManageDishesPage() {
       return;
     }
     try {
-      const updated = await updateCategory(token, cat.id, trimmed);
+      const updated = await updateCategory(token, cat.id, trimmed, editingCatImage.trim());
       setCategoriesList((prev) =>
         prev.map((c) => (c.id === updated.id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
       );
@@ -514,22 +517,31 @@ export default function ManageDishesPage() {
             )}
 
             {/* Add Category Form */}
-            <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+            <form onSubmit={handleAddCategory} className="space-y-2 mb-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="New category name (e.g. Momos)"
+                  className="flex-1 px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+                <button
+                  type="submit"
+                  disabled={catSaving}
+                  className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] disabled:bg-teal-300 text-white text-xs font-semibold flex items-center gap-1"
+                >
+                  <Plus size={14} />
+                  Add
+                </button>
+              </div>
               <input
-                type="text"
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-                placeholder="New category name (e.g. Momos)"
-                className="flex-1 px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                type="url"
+                value={newCatImage}
+                onChange={(e) => setNewCatImage(e.target.value)}
+                placeholder="Image URL (optional)"
+                className="w-full px-3.5 py-2 text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
-              <button
-                type="submit"
-                disabled={catSaving}
-                className="px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] disabled:bg-teal-300 text-white text-xs font-semibold flex items-center gap-1"
-              >
-                <Plus size={14} />
-                Add
-              </button>
             </form>
 
             {/* Existing Categories List */}
@@ -544,15 +556,29 @@ export default function ManageDishesPage() {
                   return (
                     <div key={cat.id} className="px-3.5 py-2.5 flex items-center justify-between gap-2">
                       {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingCatName}
-                          onChange={(e) => setEditingCatName(e.target.value)}
-                          className="flex-1 px-2.5 py-1 text-xs border border-teal-400 rounded-lg focus:outline-none"
-                          autoFocus
-                        />
+                        <div className="flex-1 space-y-1.5">
+                          <input
+                            type="text"
+                            value={editingCatName}
+                            onChange={(e) => setEditingCatName(e.target.value)}
+                            className="w-full px-2.5 py-1 text-xs border border-teal-400 rounded-lg focus:outline-none"
+                            autoFocus
+                          />
+                          <input
+                            type="url"
+                            value={editingCatImage}
+                            onChange={(e) => setEditingCatImage(e.target.value)}
+                            placeholder="Image URL (optional)"
+                            className="w-full px-2.5 py-1 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-teal-400"
+                          />
+                        </div>
                       ) : (
-                        <span className="text-sm font-medium text-slate-700">{cat.name}</span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          {cat.image && (
+                            <img src={cat.image} alt={cat.name} className="w-7 h-7 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                          )}
+                          <span className="text-sm font-medium text-slate-700 truncate">{cat.name}</span>
+                        </div>
                       )}
 
                       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -582,6 +608,7 @@ export default function ManageDishesPage() {
                               onClick={() => {
                                 setEditingCatId(cat.id);
                                 setEditingCatName(cat.name);
+                                setEditingCatImage(cat.image || '');
                                 setCatError('');
                               }}
                               className="p-1.5 text-slate-400 hover:text-teal-600 transition"

@@ -3,6 +3,7 @@ import { verifyToken } from '@/lib/jwt';
 
 const PROTECTED_PREFIXES = [
   '/dashboard',
+  '/orders',
   '/order-line',
   '/bulk-orders',
   '/manage-tables',
@@ -46,6 +47,7 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/orders/:path*',
     '/order-line/:path*',
     '/bulk-orders/:path*',
     '/manage-tables/:path*',

@@ -27,10 +27,12 @@ import {
   Tags,
   PartyPopper,
   ChevronDown,
+  ShoppingBag,
 } from 'lucide-react';
 
 const PRIMARY_NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+  { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Order Line', href: '/order-line', icon: ClipboardList },
   { label: 'Bulk Orders', href: '/bulk-orders', icon: PartyPopper },
   { label: 'Manage Table', href: '/manage-tables', icon: Armchair },
@@ -56,6 +58,7 @@ const MOBILE_TABS = [
   { label: 'POS', href: '/pos', icon: Zap },
   { label: 'Orders', href: '/order-line', icon: ClipboardList },
   { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+  { label: 'Orders', href: '/orders', icon: ShoppingBag },
   { label: 'Expenses', href: '/expenses', icon: Wallet },
 ];
 
@@ -501,6 +504,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             ? [
                 { label: 'POS', href: '/pos', icon: Zap },
                 { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
+  { label: 'Orders', href: '/orders', icon: ShoppingBag },
                 { label: 'Expenses', href: '/expenses', icon: Wallet },
                 { label: 'Reports', href: '/reports', icon: BarChart3 },
               ]

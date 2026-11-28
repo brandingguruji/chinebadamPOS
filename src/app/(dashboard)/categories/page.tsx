@@ -6,7 +6,7 @@ import { getCategories, createCategory, updateCategory, deleteCategory } from '@
 import { useToast } from '@/components/ToastProvider';
 import { Pagination } from '@/components/Pagination';
 import type { Category } from '@/types';
-import { Plus, Edit3, Trash2, Check, X, Tags, Search } from 'lucide-react';
+import { Plus, Edit3, Trash2, Check, X, Tags, Search, Image as ImageIcon } from 'lucide-react';
 
 const PAGE_SIZE = 10;
 
@@ -17,11 +17,13 @@ export default function CategoriesPage() {
   const [page, setPage] = useState(1);
 
   const [newName, setNewName] = useState('');
+  const [newImage, setNewImage] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
+  const [editingImage, setEditingImage] = useState('');
 
   const token = getToken() ?? '';
   const toast = useToast();
@@ -57,9 +59,10 @@ export default function CategoriesPage() {
 
     setSaving(true);
     try {
-      const created = await createCategory(token, trimmed);
+      const created = await createCategory(token, trimmed, newImage.trim());
       setCategories((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
       setNewName('');
+      setNewImage('');
       toast.success(`Category "${created.name}" added`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add category';
@@ -70,7 +73,7 @@ export default function CategoriesPage() {
     }
   }
 
-  async function handleRename(cat: Category) {
+  async function handleSaveEdit(cat: Category) {
     setError('');
     const trimmed = editingName.trim();
     if (trimmed.length < 2) {
@@ -78,14 +81,14 @@ export default function CategoriesPage() {
       return;
     }
     try {
-      const updated = await updateCategory(token, cat.id, trimmed);
+      const updated = await updateCategory(token, cat.id, trimmed, editingImage.trim());
       setCategories((prev) =>
         prev.map((c) => (c.id === updated.id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
       );
       setEditingId(null);
-      toast.success(`Category renamed to "${updated.name}"`);
+      toast.success(`Category "${updated.name}" updated`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to rename category');
+      toast.error(err instanceof Error ? err.message : 'Failed to update category');
     }
   }
 
@@ -113,7 +116,7 @@ export default function CategoriesPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Categories</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Add, rename, or remove menu categories ({categories.length} total)
+          Add, edit, or remove menu categories and optional cover images ({categories.length} total)
         </p>
       </div>
 
@@ -128,14 +131,26 @@ export default function CategoriesPage() {
             {error}
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <input
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="e.g. Momos, Beverages, Chinese Corner"
-            className="flex-1 px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="Category name (e.g. Momos, Beverages)"
+            className="w-full px-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
+          <div className="relative">
+            <ImageIcon size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              type="url"
+              value={newImage}
+              onChange={(e) => setNewImage(e.target.value)}
+              placeholder="Image URL (optional)"
+              className="w-full pl-9 pr-3.5 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end">
           <button
             type="submit"
             disabled={saving}
@@ -178,19 +193,42 @@ export default function CategoriesPage() {
                   className="px-4 sm:px-5 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/70 transition"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0D9488] flex items-center justify-center flex-shrink-0">
-                      <Tags size={15} />
+                    <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0D9488] border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                      {(isEditing ? editingImage : cat.image) ? (
+                        <img
+                          src={isEditing ? editingImage : cat.image}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <Tags size={16} />
+                      )}
                     </div>
                     {isEditing ? (
-                      <input
-                        type="text"
-                        value={editingName}
-                        onChange={(e) => setEditingName(e.target.value)}
-                        className="flex-1 px-3 py-1.5 text-sm border border-teal-400 rounded-lg focus:outline-none"
-                        autoFocus
-                      />
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          placeholder="Category name"
+                          className="px-3 py-1.5 text-sm border border-teal-400 rounded-lg focus:outline-none"
+                          autoFocus
+                        />
+                        <input
+                          type="url"
+                          value={editingImage}
+                          onChange={(e) => setEditingImage(e.target.value)}
+                          placeholder="Image URL (optional)"
+                          className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:border-teal-400"
+                        />
+                      </div>
                     ) : (
-                      <span className="text-sm font-semibold text-slate-800 truncate">{cat.name}</span>
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-slate-800 truncate">{cat.name}</div>
+                        {cat.image && (
+                          <div className="text-[11px] text-slate-400 truncate max-w-xs">{cat.image}</div>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -199,7 +237,7 @@ export default function CategoriesPage() {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleRename(cat)}
+                          onClick={() => handleSaveEdit(cat)}
                           className="p-1.5 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100"
                           title="Save"
                         >
@@ -221,6 +259,7 @@ export default function CategoriesPage() {
                           onClick={() => {
                             setEditingId(cat.id);
                             setEditingName(cat.name);
+                            setEditingImage(cat.image || '');
                           }}
                           className="p-1.5 rounded-lg text-slate-400 hover:text-teal-600 hover:bg-teal-50 transition"
                           title="Edit category"
