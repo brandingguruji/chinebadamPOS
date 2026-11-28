@@ -41,7 +41,7 @@ export default function SettingsPage() {
   const [swiggyLink, setSwiggyLink] = useState('');
   const [availableOnOwnlly, setAvailableOnOwnlly] = useState(false);
   const [ownllyLink, setOwnllyLink] = useState('');
-  const [publicMenuUrl, setPublicMenuUrl] = useState('/menu');
+  const [publicMenuUrl, setPublicMenuUrl] = useState('/');
   const [gstNumber, setGstNumber] = useState('');
   const [fssaiNumber, setFssaiNumber] = useState('');
   const [taxRate, setTaxRate] = useState('5');
@@ -88,7 +88,7 @@ export default function SettingsPage() {
       setStoreType(s.storeType);
     };
     if (typeof window !== 'undefined') {
-      setPublicMenuUrl(`${window.location.origin}/menu`);
+      setPublicMenuUrl(window.location.origin);
     }
     apply(loadStoreSettings());
     fetchStoreSettingsFromDB().then(apply);
@@ -526,7 +526,7 @@ export default function SettingsPage() {
                 Copy
               </button>
               <a
-                href="/menu"
+                href="/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold transition"

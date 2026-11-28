@@ -41,4 +41,3 @@ next-env.d.ts
 # Keep uploaded store logo in Git across builds/pushes
 !public/uploads/
 !public/uploads/*
-node_modules

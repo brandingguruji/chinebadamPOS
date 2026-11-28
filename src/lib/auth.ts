@@ -14,6 +14,7 @@ export function getToken(): string | null {
 export function removeToken(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
   }
 }
 

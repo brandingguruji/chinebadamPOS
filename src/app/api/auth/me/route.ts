@@ -22,12 +22,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const token = authHeader.slice(7);
+    const isHttps =
+      request.nextUrl.protocol === 'https:' ||
+      request.headers.get('x-forwarded-proto') === 'https';
+    const res = NextResponse.json({
       id: String(user._id),
       username: user.username,
       email: user.email || '',
       role: user.role,
     });
+    res.cookies.set('chinebadam_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      secure: isHttps,
+    });
+    return res;
   } catch {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
@@ -105,10 +117,18 @@ export async function PUT(request: NextRequest) {
     const userId = String(user._id);
     const token = await signToken({ userId, username: user.username, role: user.role });
 
-    return NextResponse.json({
+    const res = NextResponse.json({
       token,
       user: { id: userId, username: user.username, email: user.email || '', role: user.role },
     });
+    res.cookies.set('chinebadam_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24,
+      secure: request.nextUrl.protocol === 'https:' || request.headers.get('x-forwarded-proto') === 'https',
+    });
+    return res;
   } catch (err) {
     console.error('Profile update error:', err);
     return NextResponse.json({ error: 'Failed to update profile' }, { status: 500 });

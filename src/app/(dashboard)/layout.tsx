@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { isAuthenticated, getToken, removeToken } from '@/lib/auth';
+import { LoginView } from '@/components/LoginView';
 import { getMe, getStocks } from '@/lib/api';
 import { loadStoreSettings, fetchStoreSettingsFromDB, type StoreType } from '@/lib/settings';
 import clsx from 'clsx';
@@ -69,6 +70,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [lowStockCount, setLowStockCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [authStatus, setAuthStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>('checking');
 
   const isMenuSection = MENU_SUB_ITEMS.some(
     (item) => pathname === item.href || pathname.startsWith(item.href + '/')
@@ -108,7 +110,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      router.replace('/login');
+      setAuthStatus('unauthenticated');
+      if (pathname !== '/pos') {
+        router.replace('/pos');
+      }
       return;
     }
     const token = getToken();
@@ -118,24 +123,60 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           .then((list) => setLowStockCount(list.filter((s) => s.quantity <= s.minThreshold).length))
           .catch(() => {});
       };
-      fetchAlerts();
-      window.addEventListener('pos-stocks-updated', fetchAlerts);
       getMe(token)
         .then((u) => {
           setUsername(u.username);
           setRole(u.role);
+          setAuthStatus('authenticated');
+          fetchAlerts();
         })
         .catch(() => {
           removeToken();
-          router.replace('/login');
+          setAuthStatus('unauthenticated');
+          if (pathname !== '/pos') {
+            router.replace('/pos');
+          }
         });
+      window.addEventListener('pos-stocks-updated', fetchAlerts);
       return () => window.removeEventListener('pos-stocks-updated', fetchAlerts);
     }
-  }, [router]);
+  }, [router, pathname]);
 
   function handleLogout() {
     removeToken();
-    router.replace('/login');
+    setAuthStatus('unauthenticated');
+    router.replace('/pos');
+  }
+
+  if (authStatus === 'checking') {
+    return (
+      <div className="min-h-screen bg-[#F7F9FA] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0D9488]" />
+      </div>
+    );
+  }
+
+  if (authStatus === 'unauthenticated') {
+    if (pathname === '/pos') {
+      return (
+        <LoginView
+          onSuccess={() => {
+            setAuthStatus('authenticated');
+            router.refresh();
+            const token = getToken();
+            if (token) {
+              getMe(token)
+                .then((u) => {
+                  setUsername(u.username);
+                  setRole(u.role);
+                })
+                .catch(() => {});
+            }
+          }}
+        />
+      );
+    }
+    return null;
   }
 
   const posActive = pathname === '/pos' || pathname.startsWith('/pos/');
