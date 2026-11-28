@@ -21,6 +21,8 @@ import {
   Printer,
   Users,
   Clock,
+  Zap,
+  ArrowRight,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -199,8 +201,16 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Date Filter Bar */}
+        {/* Quick POS CTA + Date Filter Bar */}
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/pos"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold shadow-sm transition"
+          >
+            <Zap size={14} />
+            Quick POS
+            <ArrowRight size={13} />
+          </Link>
           <button
             type="button"
             onClick={() => setSelectedDate(today)}

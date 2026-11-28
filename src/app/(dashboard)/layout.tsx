@@ -23,27 +23,31 @@ import {
   Package,
   Menu,
   X,
-  UserCircle,
   Tags,
   PartyPopper,
+  ChevronDown,
 } from 'lucide-react';
 
-const NAV_ITEMS = [
-  { label: 'Quick POS', href: '/pos', icon: Zap },
+const PRIMARY_NAV = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutGrid },
   { label: 'Order Line', href: '/order-line', icon: ClipboardList },
   { label: 'Bulk Orders', href: '/bulk-orders', icon: PartyPopper },
   { label: 'Manage Table', href: '/manage-tables', icon: Armchair },
+  { label: 'Customers', href: '/customers', icon: Users },
+];
+
+const MENU_SUB_ITEMS = [
   { label: 'Manage Dishes', href: '/manage-dishes', icon: UtensilsCrossed },
   { label: 'Categories', href: '/categories', icon: Tags },
-  { label: 'Customers', href: '/customers', icon: Users },
-  { label: 'Expenses', href: '/expenses', icon: Wallet },
-  { label: 'Stock Alerts', href: '/stocks', icon: Package },
+];
+
+const FINANCE_SUB_ITEMS = [
   { label: 'Reports', href: '/reports', icon: BarChart3 },
+  { label: 'Stock Alerts', href: '/stocks', icon: Package },
+  { label: 'Expenses', href: '/expenses', icon: Wallet },
 ];
 
 const BOTTOM_ITEMS = [
-  { label: 'Profile', href: '/profile', icon: UserCircle },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -66,10 +70,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
+  const isMenuSection = MENU_SUB_ITEMS.some(
+    (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+  );
+  const isFinanceSection = FINANCE_SUB_ITEMS.some(
+    (item) => pathname === item.href || pathname.startsWith(item.href + '/')
+  );
+
+  const [menuGroupOpen, setMenuGroupOpen] = useState(isMenuSection);
+  const [financeGroupOpen, setFinanceGroupOpen] = useState(isFinanceSection);
+
   useEffect(() => {
     setMobileMenuOpen(false);
     setProfileMenuOpen(false);
-  }, [pathname]);
+    if (isMenuSection) setMenuGroupOpen(true);
+    if (isFinanceSection) setFinanceGroupOpen(true);
+  }, [pathname, isMenuSection, isFinanceSection]);
 
   useEffect(() => {
     const syncBrand = () => {
@@ -122,6 +138,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.replace('/login');
   }
 
+  const posActive = pathname === '/pos' || pathname.startsWith('/pos/');
+
   const NavContent = () => (
     <>
       <div className="px-5 py-4 flex items-center justify-between border-b border-slate-100 md:border-0">
@@ -152,7 +170,27 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.filter(({ href }) => {
+        {/* Highlighted Quick POS CTA */}
+        <Link
+          href="/pos"
+          className={clsx(
+            'flex items-center gap-2.5 px-3.5 py-2.5 mb-2.5 rounded-xl text-[13px] font-bold transition-all shadow-sm',
+            posActive
+              ? 'bg-[#0F766E] text-white ring-2 ring-teal-300'
+              : 'bg-[#0D9488] hover:bg-[#0F766E] text-white'
+          )}
+        >
+          <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
+            <Zap size={15} className="text-white" />
+          </span>
+          <span className="flex-1">Quick POS</span>
+          <span className="text-[10px] uppercase tracking-wider font-extrabold px-1.5 py-0.5 rounded-md bg-white/20">
+            Live
+          </span>
+        </Link>
+
+        {/* Primary Items */}
+        {PRIMARY_NAV.filter(({ href }) => {
           if (storeType === 'small' && (href === '/manage-tables' || href === '/order-line')) {
             return false;
           }
@@ -172,14 +210,107 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               <Icon size={17} className={active ? 'text-teal-600' : 'text-slate-400'} />
               <span className="flex-1">{label}</span>
-              {href === '/stocks' && lowStockCount > 0 && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white">
-                  {lowStockCount}
-                </span>
-              )}
             </Link>
           );
         })}
+
+        {/* Submenu Group 1: Menu (Manage Dishes + Categories) */}
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setMenuGroupOpen((v) => !v)}
+            className={clsx(
+              'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all',
+              isMenuSection
+                ? 'bg-slate-100/90 text-slate-900 font-semibold'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+            )}
+          >
+            <UtensilsCrossed size={17} className={isMenuSection ? 'text-teal-600' : 'text-slate-400'} />
+            <span className="flex-1 text-left">Menu</span>
+            <ChevronDown
+              size={15}
+              className={clsx('text-slate-400 transition-transform duration-200', menuGroupOpen && 'rotate-180')}
+            />
+          </button>
+
+          {menuGroupOpen && (
+            <div className="mt-1 ml-4 pl-3 border-l border-slate-200 space-y-1">
+              {MENU_SUB_ITEMS.map(({ label, href, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + '/');
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={clsx(
+                      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all',
+                      active
+                        ? 'bg-[#E6F4F1] text-[#0F766E] font-semibold'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    )}
+                  >
+                    <Icon size={15} className={active ? 'text-[#0D9488]' : 'text-slate-400'} />
+                    <span className="flex-1">{label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Submenu Group 2: Accounts & Stock (Reports + Stock Alerts + Expenses) */}
+        <div className="pt-0.5">
+          <button
+            type="button"
+            onClick={() => setFinanceGroupOpen((v) => !v)}
+            className={clsx(
+              'w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all',
+              isFinanceSection
+                ? 'bg-slate-100/90 text-slate-900 font-semibold'
+                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+            )}
+          >
+            <BarChart3 size={17} className={isFinanceSection ? 'text-teal-600' : 'text-slate-400'} />
+            <span className="flex-1 text-left">Accounts &amp; Stock</span>
+            {!financeGroupOpen && lowStockCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white">
+                {lowStockCount}
+              </span>
+            )}
+            <ChevronDown
+              size={15}
+              className={clsx('text-slate-400 transition-transform duration-200', financeGroupOpen && 'rotate-180')}
+            />
+          </button>
+
+          {financeGroupOpen && (
+            <div className="mt-1 ml-4 pl-3 border-l border-slate-200 space-y-1">
+              {FINANCE_SUB_ITEMS.map(({ label, href, icon: Icon }) => {
+                const active = pathname === href || pathname.startsWith(href + '/');
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className={clsx(
+                      'flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all',
+                      active
+                        ? 'bg-[#E6F4F1] text-[#0F766E] font-semibold'
+                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    )}
+                  >
+                    <Icon size={15} className={active ? 'text-[#0D9488]' : 'text-slate-400'} />
+                    <span className="flex-1">{label}</span>
+                    {href === '/stocks' && lowStockCount > 0 && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-rose-500 text-white">
+                        {lowStockCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <div className="my-3 border-t border-slate-100" />
 
@@ -298,18 +429,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       <div className="text-[11px] text-slate-400 capitalize">{role}</div>
                     </div>
                     <Link
-                      href="/profile"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                    >
-                      <UserCircle size={15} className="text-slate-400" />
-                      Profile Settings
-                    </Link>
-                    <Link
                       href="/settings"
                       className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
                     >
                       <Settings size={15} className="text-slate-400" />
-                      Store Settings
+                      Settings &amp; Profile
                     </Link>
                     <div className="my-1 border-t border-slate-100" />
                     <button
@@ -342,13 +466,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             : MOBILE_TABS
           ).map(({ label, href, icon: Icon }) => {
             const active = pathname === href || pathname.startsWith(href + '/');
+            const isPos = href === '/pos';
             return (
               <Link
                 key={href}
                 href={href}
                 className={clsx(
                   'flex flex-col items-center gap-0.5 px-3 py-1 rounded-xl text-[10px] font-semibold transition',
-                  active ? 'text-[#0D9488]' : 'text-slate-400'
+                  isPos
+                    ? 'bg-[#0D9488] text-white shadow-sm'
+                    : active
+                    ? 'text-[#0D9488]'
+                    : 'text-slate-400'
                 )}
               >
                 <Icon size={18} />
