@@ -3,7 +3,14 @@
 import { useEffect, useState, FormEvent, ChangeEvent } from 'react';
 import { CheckCircle2, Upload, Trash2, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
-import { loadStoreSettings, saveStoreSettings, type StoreType } from '@/lib/settings';
+import { getToken } from '@/lib/auth';
+import {
+  loadStoreSettings,
+  fetchStoreSettingsFromDB,
+  saveStoreSettingsToDB,
+  uploadStoreLogo,
+  type StoreType,
+} from '@/lib/settings';
 import clsx from 'clsx';
 
 export default function SettingsPage() {
@@ -16,24 +23,29 @@ export default function SettingsPage() {
   const [currency, setCurrency] = useState('INR (₹)');
   const [logo, setLogo] = useState<string>('');
   const [storeType, setStoreType] = useState<StoreType>('big');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
-    const s = loadStoreSettings();
-    setName(s.name);
-    setAddress(s.address);
-    setPhone(s.phone);
-    setGstNumber(s.gstNumber);
-    setFssaiNumber(s.fssaiNumber);
-    setTaxRate(String(s.taxRate));
-    setCurrency(s.currency);
-    setLogo(s.logo);
-    setStoreType(s.storeType);
+    const apply = (s: ReturnType<typeof loadStoreSettings>) => {
+      setName(s.name);
+      setAddress(s.address);
+      setPhone(s.phone);
+      setGstNumber(s.gstNumber);
+      setFssaiNumber(s.fssaiNumber);
+      setTaxRate(String(s.taxRate));
+      setCurrency(s.currency);
+      setLogo(s.logo);
+      setStoreType(s.storeType);
+    };
+    apply(loadStoreSettings());
+    fetchStoreSettingsFromDB().then(apply);
   }, []);
 
-  function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
+  async function handleLogoChange(e: ChangeEvent<HTMLInputElement>) {
     setError('');
     const file = e.target.files?.[0];
     if (!file) return;
@@ -42,22 +54,33 @@ export default function SettingsPage() {
       setError('Please upload a valid image file (PNG, JPG, WebP, or SVG).');
       return;
     }
-    if (file.size > 1024 * 1024) {
-      setError('Logo file must be under 1 MB.');
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Logo file must be under 2 MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setLogo(reader.result);
-        toast.info('Logo selected — click Save Settings to apply');
+    const token = getToken();
+    if (!token) return;
+
+    setUploadingLogo(true);
+    try {
+      const res = await uploadStoreLogo(token, file);
+      setLogo(res.logo);
+      if (res.savedToDisk) {
+        toast.success(`Logo saved to ${res.filePath} — click Save Settings to update DB`);
+      } else {
+        toast.info('Logo ready — click Save Settings to save in database');
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to upload logo';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setUploadingLogo(false);
+    }
   }
 
-  function handleSave(e: FormEvent) {
+  async function handleSave(e: FormEvent) {
     e.preventDefault();
     setError('');
     const taxNum = Number(taxRate);
@@ -70,28 +93,40 @@ export default function SettingsPage() {
       return;
     }
 
-    saveStoreSettings({
-      name: name.trim(),
-      address: address.trim(),
-      phone: phone.trim(),
-      gstNumber: gstNumber.trim().toUpperCase(),
-      fssaiNumber: fssaiNumber.trim(),
-      taxRate: taxNum,
-      currency,
-      logo,
-      storeType,
-    });
+    const token = getToken();
+    if (!token) return;
 
-    setSaved(true);
-    toast.success('Store settings & bill details saved');
-    setTimeout(() => setSaved(false), 2500);
+    setSaving(true);
+    try {
+      await saveStoreSettingsToDB(token, {
+        name: name.trim(),
+        address: address.trim(),
+        phone: phone.trim(),
+        gstNumber: gstNumber.trim().toUpperCase(),
+        fssaiNumber: fssaiNumber.trim(),
+        taxRate: taxNum,
+        currency,
+        logo,
+        storeType,
+      });
+
+      setSaved(true);
+      toast.success('Store settings saved to MongoDB');
+      setTimeout(() => setSaved(false), 2500);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save settings';
+      setError(msg);
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-slate-800 mb-1">Store Settings</h1>
       <p className="text-sm text-slate-500 mb-6">
-        These details appear on your sidebar and printed thermal bills.
+        Saved in MongoDB and synced across all devices, sidebar, login screen, and thermal bills.
       </p>
 
       <form
@@ -106,7 +141,7 @@ export default function SettingsPage() {
         {saved && (
           <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs rounded-xl px-3.5 py-2.5 flex items-center gap-2">
             <CheckCircle2 size={14} />
-            Store settings saved successfully.
+            Store settings saved to database successfully.
           </div>
         )}
 
@@ -166,10 +201,11 @@ export default function SettingsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <label className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-semibold cursor-pointer transition">
                 <Upload size={14} />
-                Upload Logo
+                {uploadingLogo ? 'Uploading...' : 'Upload Logo'}
                 <input
                   type="file"
                   accept="image/*"
+                  disabled={uploadingLogo}
                   onChange={handleLogoChange}
                   className="hidden"
                 />
@@ -189,7 +225,7 @@ export default function SettingsPage() {
                 </button>
               )}
               <p className="w-full text-[11px] text-slate-400">
-                PNG, JPG, WebP, or SVG (max 1 MB). Printed in grayscale on thermal receipts.
+                PNG, JPG, WebP, or SVG (max 2 MB). Saved in <code>public/uploads/</code> locally so it stays after Git push &amp; build.
               </p>
             </div>
           </div>
@@ -291,9 +327,10 @@ export default function SettingsPage() {
         <div className="pt-2 flex justify-end">
           <button
             type="submit"
-            className="px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-semibold transition"
+            disabled={saving || uploadingLogo}
+            className="px-5 py-2.5 rounded-xl bg-[#0D9488] hover:bg-[#0F766E] disabled:bg-teal-300 text-white text-xs font-semibold transition"
           >
-            Save Settings
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
       </form>

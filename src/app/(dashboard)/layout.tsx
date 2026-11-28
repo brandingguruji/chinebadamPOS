@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { isAuthenticated, getToken, removeToken } from '@/lib/auth';
 import { getMe, getStocks } from '@/lib/api';
-import { loadStoreSettings, type StoreType } from '@/lib/settings';
+import { loadStoreSettings, fetchStoreSettingsFromDB, type StoreType } from '@/lib/settings';
 import clsx from 'clsx';
 import {
   LayoutGrid,
@@ -14,7 +14,6 @@ import {
   UtensilsCrossed,
   Users,
   Settings,
-  HelpCircle,
   LogOut,
   Search,
   Bell,
@@ -46,7 +45,6 @@ const NAV_ITEMS = [
 const BOTTOM_ITEMS = [
   { label: 'Profile', href: '/profile', icon: UserCircle },
   { label: 'Settings', href: '/settings', icon: Settings },
-  { label: 'Help Center', href: '/help', icon: HelpCircle },
 ];
 
 const MOBILE_TABS = [
@@ -83,6 +81,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       } catch {}
     };
     syncBrand();
+    fetchStoreSettingsFromDB().then((s) => {
+      if (s.name) setBrandName(s.name);
+      setBrandLogo(s.logo || '');
+      setStoreType(s.storeType);
+    });
     window.addEventListener('pos-settings-updated', syncBrand);
     return () => window.removeEventListener('pos-settings-updated', syncBrand);
   }, []);

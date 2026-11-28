@@ -4,7 +4,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { login } from '@/lib/api';
 import { setToken } from '@/lib/auth';
-import { loadStoreSettings } from '@/lib/settings';
+import { loadStoreSettings, fetchStoreSettingsFromDB } from '@/lib/settings';
 
 const REMEMBER_KEY = 'chinebadam_remember_login';
 
@@ -31,6 +31,10 @@ export default function LoginPage() {
     const s = loadStoreSettings();
     if (s.name) setBrandName(s.name);
     if (s.logo) setBrandLogo(s.logo);
+    fetchStoreSettingsFromDB().then((dbSettings) => {
+      if (dbSettings.name) setBrandName(dbSettings.name);
+      if (dbSettings.logo) setBrandLogo(dbSettings.logo);
+    });
   }, []);
 
   async function handleSubmit(e: FormEvent) {

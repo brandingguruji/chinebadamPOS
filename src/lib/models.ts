@@ -143,3 +143,23 @@ const BulkOrderSchema = new Schema(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const BulkOrderModel: Model<any> = mongoose.models.BulkOrder || mongoose.model('BulkOrder', BulkOrderSchema);
+
+const StoreSettingsSchema = new Schema(
+  {
+    key: { type: String, required: true, unique: true, default: 'store_settings' },
+    name: { type: String, default: 'Chinebadam' },
+    logo: { type: String, default: '' },
+    address: { type: String, default: '' },
+    phone: { type: String, default: '' },
+    gstNumber: { type: String, default: '' },
+    fssaiNumber: { type: String, default: '' },
+    taxRate: { type: Number, default: 5 },
+    currency: { type: String, default: 'INR (₹)' },
+    storeType: { type: String, enum: ['small', 'medium', 'big'], default: 'big' },
+  },
+  { timestamps: true, strict: false, collection: 'settings' }
+);
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const StoreSettingsModel: Model<any> =
+  mongoose.models.StoreSettings || mongoose.model('StoreSettings', StoreSettingsSchema);
