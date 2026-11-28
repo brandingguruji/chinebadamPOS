@@ -151,6 +151,7 @@ const StoreSettingsSchema = new Schema(
     logo: { type: String, default: '' },
     address: { type: String, default: '' },
     phone: { type: String, default: '' },
+    whatsappLink: { type: String, default: '' },
     gstNumber: { type: String, default: '' },
     fssaiNumber: { type: String, default: '' },
     taxRate: { type: Number, default: 5 },

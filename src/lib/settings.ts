@@ -7,6 +7,7 @@ export interface StoreSettings {
   logo: string;
   address: string;
   phone: string;
+  whatsappLink: string;
   gstNumber: string;
   fssaiNumber: string;
   taxRate: number;
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   logo: '',
   address: '',
   phone: '',
+  whatsappLink: '',
   gstNumber: '',
   fssaiNumber: '',
   taxRate: 5,

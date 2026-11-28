@@ -11,6 +11,9 @@ import {
   Lock,
   ShieldCheck,
   Store,
+  MessageCircle,
+  ExternalLink,
+  Copy,
 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { getToken, setToken } from '@/lib/auth';
@@ -29,6 +32,8 @@ export default function SettingsPage() {
   const [name, setName] = useState('Chinebadam');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [whatsappLink, setWhatsappLink] = useState('');
+  const [publicMenuUrl, setPublicMenuUrl] = useState('/menu');
   const [gstNumber, setGstNumber] = useState('');
   const [fssaiNumber, setFssaiNumber] = useState('');
   const [taxRate, setTaxRate] = useState('5');
@@ -59,6 +64,7 @@ export default function SettingsPage() {
       setName(s.name);
       setAddress(s.address);
       setPhone(s.phone);
+      setWhatsappLink(s.whatsappLink || '');
       setGstNumber(s.gstNumber);
       setFssaiNumber(s.fssaiNumber);
       setTaxRate(String(s.taxRate));
@@ -66,6 +72,9 @@ export default function SettingsPage() {
       setLogo(s.logo);
       setStoreType(s.storeType);
     };
+    if (typeof window !== 'undefined') {
+      setPublicMenuUrl(`${window.location.origin}/menu`);
+    }
     apply(loadStoreSettings());
     fetchStoreSettingsFromDB().then(apply);
 
@@ -141,6 +150,7 @@ export default function SettingsPage() {
         name: name.trim(),
         address: address.trim(),
         phone: phone.trim(),
+        whatsappLink: whatsappLink.trim(),
         gstNumber: gstNumber.trim().toUpperCase(),
         fssaiNumber: fssaiNumber.trim(),
         taxRate: taxNum,
@@ -363,6 +373,54 @@ export default function SettingsPage() {
                 placeholder="e.g. +91 98765 43210"
                 className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
               />
+            </div>
+          </div>
+
+          {/* WhatsApp Order Link / Number */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+              <MessageCircle size={13} className="text-[#25D366]" />
+              WhatsApp Order Link or Number
+            </label>
+            <input
+              type="text"
+              value={whatsappLink}
+              onChange={(e) => setWhatsappLink(e.target.value)}
+              placeholder="e.g. https://wa.me/917439682218 or 7439682218"
+              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+            <p className="text-[11px] text-slate-400 mt-1">
+              Used on your public digital menu when customers click &quot;Send Order on WhatsApp&quot;. Falls back to Store Phone if empty.
+            </p>
+          </div>
+
+          {/* Public Digital Menu Share Box */}
+          <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200/80 flex flex-wrap items-center justify-between gap-2.5">
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold text-teal-900">Public Digital Menu Link</div>
+              <div className="text-[11px] text-teal-700 truncate">{publicMenuUrl}</div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(publicMenuUrl);
+                  toast.success('Public menu link copied!');
+                }}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-teal-300 text-teal-800 hover:bg-teal-100 text-xs font-bold transition"
+              >
+                <Copy size={12} />
+                Copy
+              </button>
+              <a
+                href="/menu"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#0D9488] hover:bg-[#0F766E] text-white text-xs font-bold transition"
+              >
+                <ExternalLink size={12} />
+                Open
+              </a>
             </div>
           </div>
 

@@ -23,6 +23,7 @@ import {
   Clock,
   Zap,
   ArrowRight,
+  ExternalLink,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -211,6 +212,15 @@ export default function DashboardPage() {
             Quick POS
             <ArrowRight size={13} />
           </Link>
+          <a
+            href="/menu"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-teal-300 text-teal-700 hover:bg-teal-50 text-xs font-bold shadow-xs transition"
+          >
+            <ExternalLink size={13} />
+            Public Menu
+          </a>
           <button
             type="button"
             onClick={() => setSelectedDate(today)}
