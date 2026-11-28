@@ -42,6 +42,13 @@ export async function GET() {
       address: settingsDoc?.address ?? '',
       phone: settingsDoc?.phone ?? '',
       whatsappLink: settingsDoc?.whatsappLink ?? '',
+      openingHours: settingsDoc?.openingHours ?? '',
+      availableOnZomato: Boolean(settingsDoc?.availableOnZomato),
+      zomatoLink: settingsDoc?.zomatoLink ?? '',
+      availableOnSwiggy: Boolean(settingsDoc?.availableOnSwiggy),
+      swiggyLink: settingsDoc?.swiggyLink ?? '',
+      availableOnOwnlly: Boolean(settingsDoc?.availableOnOwnlly),
+      ownllyLink: settingsDoc?.ownllyLink ?? '',
       taxRate: settingsDoc?.taxRate !== undefined ? Number(settingsDoc.taxRate) : DEFAULT_SETTINGS.taxRate,
       currency: settingsDoc?.currency ?? DEFAULT_SETTINGS.currency,
     };

@@ -14,6 +14,7 @@ import {
   MessageCircle,
   ExternalLink,
   Copy,
+  Clock,
 } from 'lucide-react';
 import { useToast } from '@/components/ToastProvider';
 import { getToken, setToken } from '@/lib/auth';
@@ -33,6 +34,13 @@ export default function SettingsPage() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [whatsappLink, setWhatsappLink] = useState('');
+  const [openingHours, setOpeningHours] = useState('');
+  const [availableOnZomato, setAvailableOnZomato] = useState(false);
+  const [zomatoLink, setZomatoLink] = useState('');
+  const [availableOnSwiggy, setAvailableOnSwiggy] = useState(false);
+  const [swiggyLink, setSwiggyLink] = useState('');
+  const [availableOnOwnlly, setAvailableOnOwnlly] = useState(false);
+  const [ownllyLink, setOwnllyLink] = useState('');
   const [publicMenuUrl, setPublicMenuUrl] = useState('/menu');
   const [gstNumber, setGstNumber] = useState('');
   const [fssaiNumber, setFssaiNumber] = useState('');
@@ -65,6 +73,13 @@ export default function SettingsPage() {
       setAddress(s.address);
       setPhone(s.phone);
       setWhatsappLink(s.whatsappLink || '');
+      setOpeningHours(s.openingHours || '');
+      setAvailableOnZomato(Boolean(s.availableOnZomato));
+      setZomatoLink(s.zomatoLink || '');
+      setAvailableOnSwiggy(Boolean(s.availableOnSwiggy));
+      setSwiggyLink(s.swiggyLink || '');
+      setAvailableOnOwnlly(Boolean(s.availableOnOwnlly));
+      setOwnllyLink(s.ownllyLink || '');
       setGstNumber(s.gstNumber);
       setFssaiNumber(s.fssaiNumber);
       setTaxRate(String(s.taxRate));
@@ -151,6 +166,13 @@ export default function SettingsPage() {
         address: address.trim(),
         phone: phone.trim(),
         whatsappLink: whatsappLink.trim(),
+        openingHours: openingHours.trim(),
+        availableOnZomato,
+        zomatoLink: zomatoLink.trim(),
+        availableOnSwiggy,
+        swiggyLink: swiggyLink.trim(),
+        availableOnOwnlly,
+        ownllyLink: ownllyLink.trim(),
         gstNumber: gstNumber.trim().toUpperCase(),
         fssaiNumber: fssaiNumber.trim(),
         taxRate: taxNum,
@@ -392,6 +414,97 @@ export default function SettingsPage() {
             <p className="text-[11px] text-slate-400 mt-1">
               Used on your public digital menu when customers click &quot;Send Order on WhatsApp&quot;. Falls back to Store Phone if empty.
             </p>
+          </div>
+
+          {/* Opening Hours */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1 flex items-center gap-1.5">
+              <Clock size={13} className="text-[#0D9488]" />
+              Opening Hours
+            </label>
+            <input
+              type="text"
+              value={openingHours}
+              onChange={(e) => setOpeningHours(e.target.value)}
+              placeholder="e.g. Open Daily: 11:00 AM – 11:00 PM"
+              className="w-full px-3.5 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+
+          {/* Delivery Platforms: Zomato, Swiggy, Ownlly */}
+          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+            <div>
+              <div className="text-xs font-bold text-slate-800">Also Available On (Public Menu Badges)</div>
+              <p className="text-[11px] text-slate-400">
+                Enable platforms to show badges on your external menu link. Add a store URL to make them clickable.
+              </p>
+            </div>
+
+            {/* Zomato */}
+            <div className="space-y-1.5">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={availableOnZomato}
+                  onChange={(e) => setAvailableOnZomato(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-rose-600 focus:ring-rose-500"
+                />
+                Available on Zomato
+              </label>
+              {availableOnZomato && (
+                <input
+                  type="url"
+                  value={zomatoLink}
+                  onChange={(e) => setZomatoLink(e.target.value)}
+                  placeholder="https://www.zomato.com/... (optional)"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-400"
+                />
+              )}
+            </div>
+
+            {/* Swiggy */}
+            <div className="space-y-1.5">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={availableOnSwiggy}
+                  onChange={(e) => setAvailableOnSwiggy(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-orange-500 focus:ring-orange-500"
+                />
+                Available on Swiggy
+              </label>
+              {availableOnSwiggy && (
+                <input
+                  type="url"
+                  value={swiggyLink}
+                  onChange={(e) => setSwiggyLink(e.target.value)}
+                  placeholder="https://www.swiggy.com/... (optional)"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              )}
+            </div>
+
+            {/* Ownlly */}
+            <div className="space-y-1.5">
+              <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={availableOnOwnlly}
+                  onChange={(e) => setAvailableOnOwnlly(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                Available on Ownlly
+              </label>
+              {availableOnOwnlly && (
+                <input
+                  type="url"
+                  value={ownllyLink}
+                  onChange={(e) => setOwnllyLink(e.target.value)}
+                  placeholder="https://ownlly.com/... (optional)"
+                  className="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                />
+              )}
+            </div>
           </div>
 
           {/* Public Digital Menu Share Box */}

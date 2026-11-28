@@ -8,6 +8,13 @@ export interface StoreSettings {
   address: string;
   phone: string;
   whatsappLink: string;
+  openingHours: string;
+  availableOnZomato: boolean;
+  zomatoLink: string;
+  availableOnSwiggy: boolean;
+  swiggyLink: string;
+  availableOnOwnlly: boolean;
+  ownllyLink: string;
   gstNumber: string;
   fssaiNumber: string;
   taxRate: number;
@@ -21,6 +28,13 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   address: '',
   phone: '',
   whatsappLink: '',
+  openingHours: '',
+  availableOnZomato: false,
+  zomatoLink: '',
+  availableOnSwiggy: false,
+  swiggyLink: '',
+  availableOnOwnlly: false,
+  ownllyLink: '',
   gstNumber: '',
   fssaiNumber: '',
   taxRate: 5,
